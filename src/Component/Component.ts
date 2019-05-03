@@ -11,6 +11,7 @@ import {assert} from "../utils/assert";
 import {createAction, dispose, createObservable, createObserver} from "../Observable/Observable";
 import {IRefs} from "../commons/IRefs";
 import {addVirtualEventListener} from "../utils/citoEvents";
+import {camelToDashInObject} from "../utils/convertCase";
 
 import {IComponent, IComponentConstructor} from "./IComponent";
 
@@ -46,13 +47,15 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		}
 
 		const isComponent = typeof tag !== "string";
+		const hasAttrs = attrs && typeof attrs === "object";
+
 		// Инстанс, который сейчас рендерится
 		const activeInstance = Component.activeInstances[Component.activeInstances.length - 1];
 		let virtualNode: IVirtualNode;
 		let key;
 		let ref;
 
-		if (attrs && typeof attrs === "object") {
+		if (hasAttrs) {
 			key = attrs.key;
 			ref = attrs.ref;
 
@@ -69,6 +72,18 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			);
 		} else if (!isComponent) {
 			// Случай, когда рисуем простую ноду (это можно и без ключа)
+
+			// Переименовываем className в class для совместимости с JSX
+			if (hasAttrs && attrs.className !== undefined) {
+				attrs.class = attrs.className;
+				delete attrs.className;
+			}
+
+			// Преобразуем имена атрибутов в dash-case
+			if (hasAttrs && attrs.style && typeof attrs.style === "object") {
+				attrs.style = camelToDashInObject(attrs.style);
+			}
+
 			virtualNode = {
 				attrs,
 				children,

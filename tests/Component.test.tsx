@@ -119,7 +119,10 @@ describe("Component", () => {
 				const {attrs} = this;
 
 				return (
-					<div>
+					<div
+						className="test test_default"
+						style={{pointerEvents: "none"}}
+					>
 						Hello, {attrs.name}! You have clicked {attrs.count} times.
 
 						{/*
@@ -143,7 +146,7 @@ describe("Component", () => {
 		});
 
 		expect(root.innerHTML).toBe(
-			`<div>
+			`<div style="pointer-events: none;" class="test test_default">
 				Hello, Kaibito! You have clicked 0 times.
 				<button title="Keep clicking...">
 					<i>Click me</i>
@@ -154,7 +157,7 @@ describe("Component", () => {
 		Simulant.fire(root.querySelector("button"), "click");
 
 		expect(root.innerHTML).toBe(
-			`<div>
+			`<div style="pointer-events: none;" class="test test_default">
 				Hello, Kaibito! You have clicked 1 times.
 				<button title="Keep clicking...">
 					<i>Click me</i>
