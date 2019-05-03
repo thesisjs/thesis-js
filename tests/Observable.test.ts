@@ -3,7 +3,7 @@ import {
 	observer,
 	attachView,
 	dispose,
-	getAllObservers,
+	getAllObservers, makeAction,
 } from "../src/Observable/Observable";
 
 describe("observable", () => {
@@ -52,10 +52,10 @@ describe("observable", () => {
 		const car = observable({
 			acceleration: 20,
 			time: 0,
+		});
 
-			setTime(value) {
-				this.time = value;
-			},
+		makeAction(car, "setTime", function(value) {
+			this.time = value;
 		});
 
 		const speeds = [];

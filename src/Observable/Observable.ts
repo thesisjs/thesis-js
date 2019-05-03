@@ -101,10 +101,11 @@ function makeAtom(object, name, defaultValue) {
 			const views = object[viewsKey];
 			const administrator = object[administratorKey];
 
-			if (views[name]) {
-				// Нельзя изменять computed-свойство
-				throw new Error(`Cannot mutate view '${name}'!`);
-			}
+			// Нельзя изменять computed-свойство
+			assert(
+				!views[name],
+				`Cannot mutate view '${name}'!`,
+			);
 
 			// Если значение не поменялось
 			if (attrs[name] === value) {
@@ -116,7 +117,7 @@ function makeAtom(object, name, defaultValue) {
 	});
 }
 
-function makeAction(object, name, action) {
+export function makeAction(object, name, action) {
 	Object.defineProperty(object, name, {
 		enumerable: false,
 		writable: false,
@@ -168,9 +169,6 @@ export function observable(object) {
 		if (descriptor.get) {
 			// View без аргументов (computed property)
 			makeView(object, key, descriptor.get, false);
-		} else if (typeof descriptor.value === "function") {
-			// Экшн
-			makeAction(object, key, descriptor.value);
 		} else {
 			// Атом (обычный атрибут)
 			makeAtom(object, key, descriptor.value);

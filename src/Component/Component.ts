@@ -1,13 +1,14 @@
+import {IRenderContext} from "../RenderContext/IRenderContext";
 import {IAttrChanged} from "../commons/IAttrChanged";
-import {IEvents} from "../commons/IEvents";
 import {IAttrs} from "../commons/IAttrs";
 import {ISystemAttrs} from "../commons/ISystemAttrs";
 import {vdom, IVirtualEvent, IVirtualNode} from "../../vendor/cito";
-import {IRenderContext} from "../RenderContext/IRenderContext";
+import {IEvents} from "../commons/IEvents";
 import {IComponentKeyStore} from "../ComponentKeyStore/IComponentKeyStore";
 import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
 import {RenderContext} from "../RenderContext/RenderContext";
 import {assert} from "../utils/assert";
+import {dispose, observable, observer} from "../Observable/Observable";
 
 import {IComponent, IComponentConstructor} from "./IComponent";
 
@@ -19,7 +20,7 @@ const instances: {[key: string]: Component<any>} = {};
 
 export type Element = IElement;
 
-export abstract class Component<P extends object & ISystemAttrs> implements IComponent, EventListenerObject {
+export abstract class Component<P extends object> implements IComponent, EventListenerObject {
 
 	public static createElement(
 		tag: string | IComponentConstructor,
@@ -63,8 +64,10 @@ export abstract class Component<P extends object & ISystemAttrs> implements ICom
 		if (!instance) {
 			// Компонента не было, создаём
 			instance = new (tag as any)(attrs);
+			// Инициализируем ему атрибуты
+			instance.initAttrs(attrs);
 			// Первый раз создаём фрагмент руками
-			instance.createFragment(activeInstance.renderContext);
+			instance.forceUpdate(activeInstance.renderContext, {render: false});
 
 			activeInstance.renderContext.scheduleMount(instance);
 		} else {
@@ -87,26 +90,19 @@ export abstract class Component<P extends object & ISystemAttrs> implements ICom
 
 	private static activeInstance: Component<any>;
 
-	public attrs: Partial<IAttrs<P>> = {};
+	public readonly attrs: Partial<IAttrs<P> & ISystemAttrs>;
 
-	protected attrChanged: Partial<IAttrChanged<P>> = {};
-	protected defaults: Partial<IAttrs<P>> = {};
-	protected events: IEvents = {};
+	public attrChanged: Partial<IAttrChanged<P>> = {};
+	public defaults: Partial<IAttrs<P>> = {};
+	public events: IEvents = {};
 
 	private key: string;
 	private virtualNode?: IVirtualNode;
 	private keyStore: IComponentKeyStore = new ComponentKeyStore();
 	private renderContext?: IRenderContext;
 
-	constructor(attrs: Partial<IAttrs<P>> = {}) {
-		this.attrs = {
-			...this.defaults,
-			...attrs,
-		};
-
+	constructor(attrs: Partial<IAttrs<P> & ISystemAttrs> = {}) {
 		this.key = attrs.key;
-
-		this.handleVirtualEvent = this.handleVirtualEvent.bind(this);
 	}
 
 	public abstract render(): IVirtualNode;
@@ -118,27 +114,39 @@ export abstract class Component<P extends object & ISystemAttrs> implements ICom
 	// tslint:disable-next-line:no-empty
 	public didUnmount() {}
 
-	public forceUpdate() {
+	public forceUpdate(
+		renderContext: IRenderContext = new RenderContext(),
+		{render} = {render: true},
+	) {
 		// Сохраняем старую ноду (для случая фрагмента)
 		const prevVirtualNode = this.virtualNode;
-
-		// Создаём контекст отрисовки
-		const renderContext = new RenderContext();
 		// Выполняем шаблон
 		this.createFragment(renderContext);
 
-		assert(
-			this.virtualNode.tag === prevVirtualNode.tag,
-			"Component cannot change it's root tag name",
-		);
+		if (prevVirtualNode) {
+			assert(
+				this.virtualNode.tag === prevVirtualNode.tag,
+				"Component cannot change it's root tag name",
+			);
+		}
 
 		assert(
 			this.virtualNode.tag !== undefined,
 			"Fragments are not currently supported",
 		);
 
-		// Обновляем vdom
-		vdom.update(prevVirtualNode, this.virtualNode);
+		if (render) {
+			// Обновляем vdom
+			vdom.update(prevVirtualNode, this.virtualNode);
+		}
+	}
+
+	public set(newState: Partial<IAttrs<P>>) {
+		// TODO: Обернуть все методы компонента в Action
+		// tslint:disable-next-line:forin
+		for (const name in newState) {
+			this.attrs[name] = newState[name];
+		}
 	}
 
 	public handleEvent(event: Event) {
@@ -190,21 +198,42 @@ export abstract class Component<P extends object & ISystemAttrs> implements ICom
 			}
 
 			case "$destroyed": {
-				// Снимаем обработчики событий
-				const node = this.virtualNode.dom;
-
-				// tslint:disable-next-line:forin
-				for (const name in this.events) {
-					node.removeEventListener(name, this);
-				}
-
-				// Удаляем из глобальной коллекции инстансов
-				delete instances[this.key];
-				// Вызываем метод жизненного цикла
-				this.didUnmount();
-
+				this.destroy();
 				break;
 			}
 		}
+	}
+
+	/**
+	 * Инициализация в отдельном методе, чтобы вызвать её после того,
+	 * как отработают все конструкторы
+	 * @param attrs
+	 */
+	private initAttrs(attrs: Partial<IAttrs<P>> = {}) {
+		(this as any).attrs = observable({
+			...this.defaults,
+			...attrs,
+		});
+
+		this.handleVirtualEvent = this.handleVirtualEvent.bind(this);
+		this.forceUpdate = observer(this.forceUpdate.bind(this));
+	}
+
+	private destroy() {
+		dispose(this.attrs);
+		dispose(this.forceUpdate);
+
+		// Снимаем обработчики событий
+		const node = this.virtualNode.dom;
+
+		// tslint:disable-next-line:forin
+		for (const name in this.events) {
+			node.removeEventListener(name, this);
+		}
+
+		// Удаляем из глобальной коллекции инстансов
+		delete instances[this.key];
+		// Вызываем метод жизненного цикла
+		this.didUnmount();
 	}
 }

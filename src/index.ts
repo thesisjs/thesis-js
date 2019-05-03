@@ -40,8 +40,10 @@ export function createComponent(
 
 	// Создаём контекст отрисовки
 	const renderContext = new RenderContext();
+	// Настраиваем атрибуты
+	(instance as any).initAttrs(attrs);
 	// Вызываем шаблон компонента
-	(instance as any).createFragment(renderContext);
+	(instance as any).forceUpdate(renderContext, {render: false});
 
 	// Очищаем контейнер
 	while (target.firstChild) {
@@ -84,4 +86,12 @@ export function createObservableView(
 
 export function dispose(anything: any) {
 	disposeImpl(anything);
+}
+
+// tslint:disable-next-line
+export declare namespace JSX {
+	// tslint:disable-next-line
+	interface Element {
+		attrs: { [propName: string]: any };
+	}
 }
