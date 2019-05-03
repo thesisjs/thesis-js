@@ -4,6 +4,8 @@ import {
 	createObservableView,
 	createAction,
 	dispose,
+} from "../src/";
+import {
 	getAllObservers,
 } from "../src/Observable/Observable";
 
