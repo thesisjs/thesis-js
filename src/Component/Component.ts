@@ -8,7 +8,7 @@ import {IComponentKeyStore} from "../ComponentKeyStore/IComponentKeyStore";
 import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
 import {RenderContext} from "../RenderContext/RenderContext";
 import {assert} from "../utils/assert";
-import {dispose, observable, observer} from "../Observable/Observable";
+import {createAction, dispose, createObservable, createObserver} from "../Observable/Observable";
 
 import {IComponent, IComponentConstructor} from "./IComponent";
 
@@ -210,13 +210,15 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	 * @param attrs
 	 */
 	private initAttrs(attrs: Partial<IAttrs<P>> = {}) {
-		(this as any).attrs = observable({
+		(this as any).attrs = createObservable({
 			...this.defaults,
 			...attrs,
 		});
 
 		this.handleVirtualEvent = this.handleVirtualEvent.bind(this);
-		this.forceUpdate = observer(this.forceUpdate.bind(this));
+
+		this.forceUpdate = createObserver(this.forceUpdate.bind(this));
+		this.set = createAction(this.attrs, this.set);
 	}
 
 	private destroy() {

@@ -48,7 +48,7 @@ function makeView(object, name, view, asMethod) {
 		viewData.valid = arguments.length === 0;
 	};
 
-	const viewObserver = viewData.observer = observer(clearReaction);
+	const viewObserver = viewData.observer = createObserver(clearReaction);
 
 	// Геттер для view
 	viewData.getter = function $view() {
@@ -117,29 +117,24 @@ function makeAtom(object, name, defaultValue) {
 	});
 }
 
-export function makeAction(object, name, action) {
-	Object.defineProperty(object, name, {
-		enumerable: false,
-		writable: false,
+export function createAction(object, action) {
+	return function $action(...args: any[]) {
+		actionCount++;
+		action.apply(object, arguments);
+		actionCount--;
 
-		value: function $action() {
-			actionCount++;
-			action.apply(object, arguments);
-			actionCount--;
-
-			// После последнего экшна запускаем реакции
-			if (!actionCount) {
-				object[administratorKey].callReactionsHook();
-			}
-		},
-	});
+		// После последнего экшна запускаем реакции
+		if (!actionCount) {
+			object[administratorKey].callReactionsHook();
+		}
+	};
 }
 
 /**
  * Превращает переданный объект в Observable
  * @param object
  */
-export function observable(object) {
+export function createObservable(object) {
 	assert(
 		object && typeof object === "object",
 		`Expected an object, bun got '${typeof object}'`,
@@ -182,7 +177,7 @@ export function observable(object) {
  * Превращает переданную функцию в observer
  * @param reaction
  */
-export function observer(reaction) {
+export function createObserver(reaction) {
 	assert(
 		typeof reaction === "function",
 		`Expected function, but got '${typeof reaction}'`,
@@ -244,7 +239,7 @@ export function dispose(object: object | ((...args: any) => any)) {
 	object[disposedKey] = true;
 }
 
-export function attachView(object, name, view) {
+export function createObservableView(object, name, view) {
 	return makeView(object, name, view, true);
 }
 

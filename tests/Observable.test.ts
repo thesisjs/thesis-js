@@ -1,15 +1,16 @@
 import {
-	observable,
-	observer,
-	attachView,
+	createObservable,
+	createObserver,
+	createObservableView,
+	createAction,
 	dispose,
-	getAllObservers, makeAction,
+	getAllObservers,
 } from "../src/Observable/Observable";
 
 describe("observable", () => {
 
 	test("attrs", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 		});
@@ -27,14 +28,14 @@ describe("observable", () => {
 	});
 
 	test("reactive", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 		});
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.time * car.acceleration);
 		});
 
@@ -49,18 +50,18 @@ describe("observable", () => {
 	});
 
 	test("action", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 		});
 
-		makeAction(car, "setTime", function(value) {
-			this.time = value;
+		const setTime = createAction(car, (value) => {
+			car.time = value;
 		});
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.time * car.acceleration);
 		});
 
@@ -69,7 +70,7 @@ describe("observable", () => {
 
 		expect(speeds).toEqual([0, 0]);
 
-		car.setTime(1);
+		setTime(1);
 		expect(speeds).toEqual([0, 0, 20]);
 
 		dispose(car);
@@ -77,33 +78,33 @@ describe("observable", () => {
 	});
 
 	test("action in action", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
+		});
 
-			setTime(value) {
-				this.time = value;
-			},
+		const setTime = createAction(car, (value) => {
+			car.time = value;
+		});
 
-			setSpeed(time, acceleration) {
-				this.acceleration = acceleration;
-				this.setTime(time);
-			},
+		const setSpeed = createAction(car, (time, acceleration) => {
+			car.acceleration = acceleration;
+			setTime(time);
 		});
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.time * car.acceleration);
 		});
 
 		carObserver();
 		expect(speeds).toEqual([0]);
 
-		car.setTime(1);
+		setTime(1);
 		expect(speeds).toEqual([0, 20]);
 
-		car.setSpeed(2, 30);
+		setSpeed(2, 30);
 		expect(speeds).toEqual([0, 20, 60]);
 
 		dispose(car);
@@ -113,7 +114,7 @@ describe("observable", () => {
 	test("computed value", () => {
 		let computed = 0;
 
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 
@@ -125,7 +126,7 @@ describe("observable", () => {
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.speed);
 		});
 
@@ -146,18 +147,18 @@ describe("observable", () => {
 	test("computed view", () => {
 		let computed = 0;
 
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 		});
 
-		attachView(car, "getSpeed", function(time) {
+		createObservableView(car, "getSpeed", function(time) {
 			computed++;
 			return time * this.acceleration;
 		});
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.getSpeed(1));
 		});
 
@@ -176,7 +177,7 @@ describe("observable", () => {
 	});
 
 	test("modifying a view", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 
@@ -193,7 +194,7 @@ describe("observable", () => {
 	});
 
 	test("dispose an observer", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 
@@ -204,7 +205,7 @@ describe("observable", () => {
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.speed);
 		});
 
@@ -221,7 +222,7 @@ describe("observable", () => {
 	});
 
 	test("dispose an observable", () => {
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 0,
 
@@ -232,7 +233,7 @@ describe("observable", () => {
 
 		const speeds = [];
 
-		const carObserver = observer(() => {
+		const carObserver = createObserver(() => {
 			speeds.push(car.speed);
 		});
 
@@ -257,7 +258,7 @@ describe("observable", () => {
 		}).toThrow();
 
 		expect(() => {
-			observable(car);
+			createObservable(car);
 		}).toThrow();
 
 		expect(
@@ -285,21 +286,21 @@ describe("observable", () => {
 
 	test("observable typecheck", () => {
 		expect(() => {
-			observable(null);
+			createObservable(null);
 		}).toThrow();
 
 		expect(() => {
-			observable(void 0);
+			createObservable(void 0);
 		}).toThrow();
 
 		expect(() => {
-			observable(3);
+			createObservable(3);
 		}).toThrow();
 
-		const car = observable({});
+		const car = createObservable({});
 
 		expect(() => {
-			observable(car);
+			createObservable(car);
 		}).toThrow();
 
 		dispose(car);
@@ -307,15 +308,15 @@ describe("observable", () => {
 
 	test("observer typecheck", () => {
 		expect(() => {
-			observer(null);
+			createObserver(null);
 		}).toThrow();
 
 		expect(() => {
-			observer(void 0);
+			createObserver(void 0);
 		}).toThrow();
 
 		expect(() => {
-			observer({});
+			createObserver({});
 		}).toThrow();
 	});
 
@@ -323,12 +324,12 @@ describe("observable", () => {
 		let speed = 0;
 		let willDispose = false;
 
-		const car = observable({
+		const car = createObservable({
 			acceleration: 20,
 			time: 1,
 		});
 
-		const firstObserver = observer(() => {
+		const firstObserver = createObserver(() => {
 			speed = car.time * car.acceleration;
 
 			if (willDispose) {
@@ -336,7 +337,7 @@ describe("observable", () => {
 			}
 		});
 
-		const secondObserver = observer(() => {
+		const secondObserver = createObserver(() => {
 			speed = 2 * car.time * car.acceleration;
 		});
 
