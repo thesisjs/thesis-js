@@ -134,6 +134,8 @@ describe("Component", () => {
 						>
 							<i ref="text">Click me</i>
 						</Button>
+
+						<span dangerouslySetInnerHTML={{__html: "<i>Thank you!</i>"}}/>
 					</div>
 				);
 			}
@@ -151,6 +153,7 @@ describe("Component", () => {
 				<button title="Keep clicking...">
 					<i>Click me</i>
 				</button>
+				<span><i>Thank you!</i></span>
 			</div>`.replace(/[\t\r\n]/g, ""),
 		);
 
@@ -162,6 +165,7 @@ describe("Component", () => {
 				<button title="Keep clicking...">
 					<i>Click me</i>
 				</button>
+				<span><i>Thank you!</i></span>
 			</div>`.replace(/[\t\r\n]/g, ""),
 		);
 

@@ -30,6 +30,20 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		attrs?: {[name: string]: any},
 		...children: IElement[]
 	): IElement {
+		const isComponent = typeof tag !== "string";
+		const hasAttrs = attrs && typeof attrs === "object";
+		const hasInnerHTML = hasAttrs && typeof attrs.dangerouslySetInnerHTML === "object";
+
+		// Заменяем детей на innerHTML, если передали нужный параметр
+		if (hasInnerHTML) {
+			children = [{
+				children: attrs.dangerouslySetInnerHTML.__html,
+				tag: "<",
+			}];
+
+			delete attrs.dangerouslySetInnerHTML;
+		}
+
 		// Нормализация детей
 		for (let i = 0; i < children.length; i++) {
 			if (children[i] === null || children[i] === undefined) {
@@ -45,9 +59,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 				i--;
 			}
 		}
-
-		const isComponent = typeof tag !== "string";
-		const hasAttrs = attrs && typeof attrs === "object";
 
 		// Инстанс, который сейчас рендерится
 		const activeInstance = Component.activeInstances[Component.activeInstances.length - 1];
@@ -71,7 +82,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 				tag as IComponentConstructor,
 			);
 		} else if (!isComponent) {
-			// Случай, когда рисуем простую ноду (это можно и без ключа)
+			// ==== Случай, когда рисуем простую ноду (это можно и без ключа) ====
 
 			// Переименовываем className в class для совместимости с JSX
 			if (hasAttrs && attrs.className !== undefined) {
@@ -101,7 +112,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			return virtualNode as IElement;
 		}
 
-		// Остальное относится к случаю, когда рисуем компонент
+		// ==== Остальное относится к случаю, когда рисуем компонент ====
 
 		attrs.children = children;
 
