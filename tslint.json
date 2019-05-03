@@ -17,7 +17,8 @@
         "no-unused-expression": [true, "allow-fast-null-checks"],
         "max-classes-per-file": [true, 5],
         "jsdoc-format": false,
-        "variable-name": [true, "allow-trailing-underscore"]
+        "variable-name": [true, "allow-trailing-underscore"],
+        "member-access": false
     },
     "rulesDirectory": []
 }

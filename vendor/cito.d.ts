@@ -1,16 +1,23 @@
 // tslint:disable
 
+import {IComponent} from "../src/Component/IComponent";
+
+declare type VirtualEventHandler = (evt: IVirtualEvent) => void;
+
 declare interface IVirtualNode {
 	tag?: string;
 	attrs?: object;
-	events?: {[key: string]: (evt: IVirtualEvent) => void};
+	events?: {[key: string]: VirtualEventHandler | VirtualEventHandler[]};
 	children?: string | IVirtualNode[];
 	key?: number | string;
 	dom?: Node;
+	component?: IComponent;
 }
 
+declare type VirtualEventType = "$created" | "$destroyed" | "$changed";
+
 declare interface IVirtualEvent {
-	type: string,
+	type: VirtualEventType,
 	target: Node,
 	virtualNode: IVirtualNode,
 }

@@ -79,6 +79,11 @@ export const createElement = Component.createElement;
 export declare namespace JSX {
 	// tslint:disable-next-line
 	interface Element {
-		attrs: { [propName: string]: any };
+		attrs: {[propName: string]: any};
+	}
+
+	// tslint:disable-next-line
+	interface IntrinsicElements {
+		[name: string]: any;
 	}
 }

@@ -9,6 +9,8 @@ import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
 import {RenderContext} from "../RenderContext/RenderContext";
 import {assert} from "../utils/assert";
 import {createAction, dispose, createObservable, createObserver} from "../Observable/Observable";
+import {IRefs} from "../commons/IRefs";
+import {addVirtualEventListener} from "../utils/citoEvents";
 
 import {IComponent, IComponentConstructor} from "./IComponent";
 
@@ -30,24 +32,44 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		// Нормализация детей
 		for (let i = 0; i < children.length; i++) {
 			if (children[i] === null || children[i] === undefined) {
+				// Случай, когда нужно заменить null и undefined на пустую строку
 				children[i] = "" as any;
 			} else if (typeof children[i] === "number") {
+				// Случай, когда нужно превратить строку в число
 				children[i] = String(children[i]) as any;
+			} else if (Array.isArray(children[i])) {
+				// Случай, когда нужно развернуть вложенные массивы в плоский
+				children.splice.apply(children, [i, 1].concat(children[i] as any));
+				// Пройдёмся и по свежевставленным детям тоже
+				i--;
 			}
 		}
 
 		const isComponent = typeof tag !== "string";
-		const {activeInstance} = Component;
+		// Инстанс, который сейчас рендерится
+		const activeInstance = Component.activeInstances[Component.activeInstances.length - 1];
+		let virtualNode: IVirtualNode;
 		let key;
+		let ref;
 
 		if (attrs && typeof attrs === "object") {
 			key = attrs.key;
+			ref = attrs.ref;
+
+			// Удаляем ref из атрибутов узла, чтобы он не попал в DOM или в другой инстанс
+			if (ref !== undefined) {
+				delete attrs.ref;
+			}
 		}
 
 		if (isComponent && !key) {
-			key = activeInstance.key + ":" + activeInstance.keyStore.nextKeyFor(tag as IComponentConstructor);
+			// Генерируем компоненту ключ
+			key = activeInstance.key + ":" + activeInstance.keyStore.nextKeyFor(
+				tag as IComponentConstructor,
+			);
 		} else if (!isComponent) {
-			return {
+			// Случай, когда рисуем простую ноду (это можно и без ключа)
+			virtualNode = {
 				attrs,
 				children,
 				key: key
@@ -55,7 +77,16 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 					: undefined,
 				tag: tag as string,
 			};
+
+			// Инициализируем ref, если он есть
+			if (ref !== undefined) {
+				activeInstance.initRef(ref, virtualNode);
+			}
+
+			return virtualNode as IElement;
 		}
+
+		// Остальное относится к случаю, когда рисуем компонент
 
 		attrs.children = children;
 
@@ -72,10 +103,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			activeInstance.renderContext.scheduleMount(instance);
 		} else {
 			// Компонент был, обновляем
-			// tslint:disable-next-line:forin
-			for (const name in attrs) {
-				instance.attrs[name] = attrs[name];
-			}
+			instance.set(attrs);
 
 			// К этому моменту у него уже должен был произойти вызов createFragment
 			// Так как реактивность
@@ -83,18 +111,27 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			activeInstance.renderContext.scheduleUpdate(instance);
 		}
 
+		// Добавляем компонент в глобальную коллекцию
 		instances[key] = instance;
+		virtualNode = (instance as any).virtualNode;
 
-		return (instance as any).virtualNode;
+		// Инициализируем ref с этим компонентом у родительского, если он есть
+		if (ref !== undefined) {
+			activeInstance.initRef(ref, virtualNode);
+		}
+
+		return virtualNode as IElement;
 	}
 
-	private static activeInstance: Component<any>;
+	// Стек активных инстансов
+	private static activeInstances: Array<Component<any>> = [];
 
 	public readonly attrs: Partial<IAttrs<P> & ISystemAttrs>;
 
 	public attrChanged: Partial<IAttrChanged<P>> = {};
 	public defaults: Partial<IAttrs<P>> = {};
 	public events: IEvents = {};
+	public refs: IRefs = {};
 
 	private key: string;
 	private virtualNode?: IVirtualNode;
@@ -103,6 +140,8 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 	constructor(attrs: Partial<IAttrs<P> & ISystemAttrs> = {}) {
 		this.key = attrs.key;
+
+		// Инициализация компонента находится в this.initAttrs
 	}
 
 	public abstract render(): IVirtualNode;
@@ -141,11 +180,13 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		}
 	}
 
-	public set(newState: Partial<IAttrs<P>>) {
-		// TODO: Обернуть все методы компонента в Action
+	public set(newAttrs: Partial<IAttrs<P>>) {
+		// Это всё заворачивается в action при инициализации, так что реакция
+		// будет только одна (если будет вообще)
+
 		// tslint:disable-next-line:forin
-		for (const name in newState) {
-			this.attrs[name] = newState[name];
+		for (const name in newAttrs) {
+			this.attrs[name] = newAttrs[name];
 		}
 	}
 
@@ -166,20 +207,21 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	}
 
 	protected createFragment(renderContext: IRenderContext) {
-		Component.activeInstance = this;
+		Component.activeInstances.push(this);
 		this.renderContext = renderContext;
+
 		const virtualNode = this.render();
+
 		this.renderContext = undefined;
-		Component.activeInstance = undefined;
+		Component.activeInstances.pop();
 
 		this.keyStore.clear();
 
 		// Подписываемся на уничтожение блока
-		virtualNode.events = {
-			$created: this.handleVirtualEvent,
-			$destroyed: this.handleVirtualEvent,
-		};
+		addVirtualEventListener(virtualNode, "$created", this.handleVirtualEvent);
+		addVirtualEventListener(virtualNode, "$destroyed", this.handleVirtualEvent);
 
+		virtualNode.component = this;
 		this.virtualNode = virtualNode;
 	}
 
@@ -218,7 +260,26 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		this.handleVirtualEvent = this.handleVirtualEvent.bind(this);
 
 		this.forceUpdate = createObserver(this.forceUpdate.bind(this));
-		this.set = createAction(this.attrs, this.set);
+		this.set = createAction(this.attrs, this.set.bind(this));
+	}
+
+	/**
+	 * Инициализация ref-а
+	 * @param name
+	 * @param node
+	 */
+	private initRef(name: string, node: IVirtualNode) {
+		addVirtualEventListener(node, "$created", () => {
+			if (node.component) {
+				this.refs[name] = node.component;
+			} else {
+				this.refs[name] = node.dom as HTMLElement;
+			}
+		});
+
+		addVirtualEventListener(node, "$destroyed", () => {
+			delete this.refs[name];
+		});
 	}
 
 	private destroy() {

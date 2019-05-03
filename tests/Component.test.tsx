@@ -7,32 +7,33 @@ describe("Component", () => {
 	test("Render once", () => {
 		interface IButtonAttrs {
 			title: string;
+			disabled: boolean;
 			onClick: ((event: MouseEvent) => void);
 		}
 
 		class Button extends Thesis.Component<IButtonAttrs> {
-			public defaults = {
+			defaults = {
+				disabled: false,
 				onClick: undefined,
 				title: "",
 			};
 
-			public events = {
+			events = {
 				click: this.handleClick.bind(this),
 			};
 
-			public handleClick(event) {
-				const {onClick} = this.attrs;
-
-				if (onClick) {
-					onClick(event);
-				}
+			handleClick(event) {
+				this.attrs.onClick(event);
 			}
 
-			public render(): Thesis.Element {
+			render(): Thesis.Element {
 				const {attrs} = this;
 
 				return (
-					<button title={attrs.title}>
+					<button
+						title={attrs.title}
+						ref="el"
+					>
 						{attrs.children}
 					</button>
 				);
@@ -45,7 +46,7 @@ describe("Component", () => {
 		}
 
 		class Test extends Thesis.Component<ITestAttrs> {
-			public defaults = {
+			defaults = {
 				count: 0,
 				name: "",
 			};
@@ -56,11 +57,11 @@ describe("Component", () => {
 				this.handleButtonClick = this.handleButtonClick.bind(this);
 			}
 
-			public handleButtonClick() {
+			handleButtonClick() {
 				this.attrs.count++;
 			}
 
-			public render(): Thesis.Element {
+			render(): Thesis.Element {
 				const {attrs} = this;
 
 				return (
@@ -72,8 +73,9 @@ describe("Component", () => {
 						<Button
 							title="Keep clicking..."
 							onClick={this.handleButtonClick}
+							ref="button"
 						>
-							<i>Click me</i>
+							<i ref="text">Click me</i>
 						</Button>
 					</div>
 				);
@@ -87,13 +89,23 @@ describe("Component", () => {
 		});
 
 		expect(root.innerHTML).toBe(
-			"<div>Hello, Kaibito! You have clicked 0 times.<button title=\"Keep clicking...\"></button></div>",
+			`<div>
+				Hello, Kaibito! You have clicked 0 times.
+				<button title="Keep clicking...">
+					<i>Click me</i>
+				</button>
+			</div>`.replace(/[\t\r\n]/g, ""),
 		);
 
 		Simulant.fire(root.querySelector("button"), "click");
 
 		expect(root.innerHTML).toBe(
-			"<div>Hello, Kaibito! You have clicked 1 times.<button title=\"Keep clicking...\"></button></div>",
+			`<div>
+				Hello, Kaibito! You have clicked 1 times.
+				<button title="Keep clicking...">
+					<i>Click me</i>
+				</button>
+			</div>`.replace(/[\t\r\n]/g, ""),
 		);
 
 		Thesis.unmountComponentAtNode(root);
