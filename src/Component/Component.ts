@@ -80,7 +80,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 			// Инициализируем ref, если он есть
 			if (ref !== undefined) {
-				activeInstance.initRef(ref, virtualNode);
+				activeInstance.initRef(ref, virtualNode, false);
 			}
 
 			return virtualNode as IElement;
@@ -107,8 +107,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 			// К этому моменту у него уже должен был произойти вызов createFragment
 			// Так как реактивность
-
-			activeInstance.renderContext.scheduleUpdate(instance);
 		}
 
 		// Добавляем компонент в глобальную коллекцию
@@ -117,7 +115,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 		// Инициализируем ref с этим компонентом у родительского, если он есть
 		if (ref !== undefined) {
-			activeInstance.initRef(ref, virtualNode);
+			activeInstance.initRef(ref, virtualNode, true);
 		}
 
 		return virtualNode as IElement;
@@ -146,17 +144,19 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 	public abstract render(): IVirtualNode;
 
-	// tslint:disable-next-line:no-empty
-	public didMount() {}
-	// tslint:disable-next-line:no-empty
-	public didUpdate() {}
-	// tslint:disable-next-line:no-empty
-	public didUnmount() {}
-
 	public forceUpdate(
-		renderContext: IRenderContext = new RenderContext(),
+		renderContext?: IRenderContext,
 		{render} = {render: true},
 	) {
+		// Обновление верхнего уровня, то есть мы должны в начале создать
+		// очередь на mount/update, а в конце её выполнить
+		// Вложенные обновления получат нашу очередь
+		const isTopLevelUpdate = !renderContext;
+
+		if (isTopLevelUpdate) {
+			renderContext = new RenderContext();
+		}
+
 		// Сохраняем старую ноду (для случая фрагмента)
 		const prevVirtualNode = this.virtualNode;
 		// Выполняем шаблон
@@ -174,9 +174,18 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			"Fragments are not currently supported",
 		);
 
+		if (render && isTopLevelUpdate) {
+			// Не забываем записываться в очередь на didUpdate
+			renderContext.scheduleUpdate(this);
+		}
+
 		if (render) {
 			// Обновляем vdom
 			vdom.update(prevVirtualNode, this.virtualNode);
+		}
+
+		if (isTopLevelUpdate) {
+			renderContext.fireAll();
 		}
 	}
 
@@ -253,6 +262,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	 */
 	private initAttrs(attrs: Partial<IAttrs<P>> = {}) {
 		(this as any).attrs = createObservable({
+			children: undefined,
 			...this.defaults,
 			...attrs,
 		});
@@ -267,10 +277,11 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	 * Инициализация ref-а
 	 * @param name
 	 * @param node
+	 * @param isComponent
 	 */
-	private initRef(name: string, node: IVirtualNode) {
+	private initRef(name: string, node: IVirtualNode, isComponent: boolean) {
 		addVirtualEventListener(node, "$created", () => {
-			if (node.component) {
+			if (isComponent) {
 				this.refs[name] = node.component;
 			} else {
 				this.refs[name] = node.dom as HTMLElement;
@@ -283,7 +294,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	}
 
 	private destroy() {
-		dispose(this.attrs);
+		// Убираем реактивность с forceUpdate
 		dispose(this.forceUpdate);
 
 		// Снимаем обработчики событий
@@ -296,7 +307,12 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 		// Удаляем из глобальной коллекции инстансов
 		delete instances[this.key];
+
 		// Вызываем метод жизненного цикла
-		this.didUnmount();
+		const didUnmount = (this as IComponent).didUnmount;
+		didUnmount && didUnmount.apply(this);
+
+		// Освобождаем attrs в конце потому, что они могли понадобиться в didUnmount
+		dispose(this.attrs);
 	}
 }

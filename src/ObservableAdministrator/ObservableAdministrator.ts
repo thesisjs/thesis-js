@@ -20,8 +20,6 @@ function callReactions(observers) {
 			}
 		}
 	}
-
-	callQueue = [];
 }
 
 export function makeObservableAdministrator(object, observableStack, observers) {

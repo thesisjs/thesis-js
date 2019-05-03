@@ -61,7 +61,9 @@ export function createComponent(
 	vdom.append(target, (instance as any).virtualNode);
 	// Сохраняем ссылку на компонент в контейнере
 	markRootComponent(instance);
-	// Выполняем колбеки
+
+	// Выполняем методы жизненного цикла
+	renderContext.scheduleMount(instance);
 	renderContext.fireAll();
 
 	return instance;

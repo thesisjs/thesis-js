@@ -5,6 +5,8 @@ import * as Thesis from "../src/index";
 describe("Component", () => {
 
 	test("Render once", () => {
+		const log = [];
+
 		interface IButtonAttrs {
 			title: string;
 			disabled: boolean;
@@ -24,6 +26,30 @@ describe("Component", () => {
 
 			handleClick(event) {
 				this.attrs.onClick(event);
+			}
+
+			didMount() {
+				log.push("Button did mount");
+
+				expect(
+					(this.refs.el as HTMLElement).outerHTML,
+				).toBe(
+					"<button title=\"Keep clicking...\"><i>Click me</i></button>",
+				);
+			}
+
+			didUpdate() {
+				log.push("Button did update");
+
+				expect(
+					(this.refs.el as HTMLElement).outerHTML,
+				).toBe(
+					"<button title=\"Keep clicking...\"><i>Click me</i></button>",
+				);
+			}
+
+			didUnmount() {
+				log.push("Button did unmount");
 			}
 
 			render(): Thesis.Element {
@@ -59,6 +85,34 @@ describe("Component", () => {
 
 			handleButtonClick() {
 				this.attrs.count++;
+			}
+
+			didMount() {
+				log.push("Test did mount");
+
+				expect(
+					(this.refs.text as HTMLElement).outerHTML,
+				).toBe(
+					"<i>Click me</i>",
+				);
+
+				expect(this.refs.button instanceof Button).toBeTruthy();
+			}
+
+			didUpdate() {
+				log.push("Test did update");
+
+				expect(
+					(this.refs.text as HTMLElement).outerHTML,
+				).toBe(
+					"<i>Click me</i>",
+				);
+
+				expect(this.refs.button instanceof Button).toBeTruthy();
+			}
+
+			didUnmount() {
+				log.push("Test did unmount");
 			}
 
 			render(): Thesis.Element {
@@ -111,6 +165,15 @@ describe("Component", () => {
 		Thesis.unmountComponentAtNode(root);
 
 		expect(root.innerHTML).toBe("");
+
+		expect(log).toEqual([
+			"Button did mount",
+			"Test did mount",
+			"Button did update",
+			"Test did update",
+			"Test did unmount",
+			"Button did unmount",
+		]);
 	});
 
 });

@@ -3,15 +3,29 @@ import {IComponent} from "../Component/IComponent";
 import {IRenderContext} from "./IRenderContext";
 
 export class RenderContext implements IRenderContext {
+	private mounts: IComponent[] = [];
+	private updates: IComponent[] = [];
+
 	public scheduleMount(component: IComponent): void {
-		// TODO: Implement
+		this.mounts.push(component);
 	}
 
 	public scheduleUpdate(component: IComponent): void {
-		// TODO: Implement
+		this.updates.push(component);
 	}
 
 	public fireAll(): void {
-		// TODO: Implement
+		let component;
+
+		for (component of this.mounts) {
+			component.didMount && component.didMount();
+		}
+
+		for (component of this.updates) {
+			component.didUpdate && component.didUpdate();
+		}
+
+		this.mounts = [];
+		this.updates = [];
 	}
 }
