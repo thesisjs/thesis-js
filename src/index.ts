@@ -4,6 +4,7 @@ import {IComponent, IComponentConstructor} from "./Component/IComponent";
 import {ISystemAttrs} from "./commons/ISystemAttrs";
 import {RenderContext} from "./RenderContext/RenderContext";
 import {Component} from "./Component/Component";
+import {observable, observer, dispose as disposeImpl, attachView} from "./Observable/Observable";
 export {Component, Element} from "./Component/Component";
 
 let lastRootKey = 0;
@@ -64,3 +65,23 @@ export function unmountComponentAtNode(node: Node) {
 }
 
 export const createElement = Component.createElement;
+
+export function createObservable(fields: any) {
+	return observable(fields);
+}
+
+export function createObserver(func: (...args: any) => any) {
+	return observer(func);
+}
+
+export function createObservableView(
+	object,
+	name: string,
+	implementation: (...args: any) => any,
+): typeof object {
+	return attachView(object, name, implementation);
+}
+
+export function dispose(anything: any) {
+	disposeImpl(anything);
+}
