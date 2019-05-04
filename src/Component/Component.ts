@@ -152,10 +152,10 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 	public readonly attrs: Partial<IAttrs<P> & ISystemAttrs>;
 
-	public attrChanged: Partial<IAttrChanged<P>> = {};
-	public defaults: Partial<IAttrs<P>> = {};
-	public events: IEvents = {};
-	public refs: IRefs = {};
+	public readonly attrChanged: Partial<IAttrChanged<P>> = {};
+	public readonly defaults: Partial<IAttrs<P>> = {};
+	public readonly events: IEvents = {};
+	public readonly refs: IRefs = {};
 
 	private key: string;
 	private virtualNode?: IVirtualNode;

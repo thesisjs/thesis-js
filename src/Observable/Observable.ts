@@ -120,13 +120,15 @@ function makeAtom(object, name, defaultValue) {
 export function createAction(object, action) {
 	return function $action(...args: any[]) {
 		actionCount++;
-		action.apply(object, arguments);
+		const result = action.apply(object, arguments);
 		actionCount--;
 
 		// После последнего экшна запускаем реакции
 		if (!actionCount) {
 			object[administratorKey].callReactionsHook();
 		}
+
+		return result;
 	};
 }
 
