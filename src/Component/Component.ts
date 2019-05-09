@@ -1,5 +1,5 @@
 import {IRenderContext} from "../RenderContext/IRenderContext";
-import {IAttrChanged} from "../commons/IAttrChanged";
+import {AttrChangedHandler, IAttrChanged} from "../commons/IAttrChanged";
 import {IAttrs} from "../commons/IAttrs";
 import {ISystemAttrs} from "../commons/ISystemAttrs";
 import {vdom, IVirtualEvent, IVirtualNode} from "../../vendor/cito";
@@ -8,7 +8,7 @@ import {IComponentKeyStore} from "../ComponentKeyStore/IComponentKeyStore";
 import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
 import {RenderContext} from "../RenderContext/RenderContext";
 import {assert} from "../utils/assert";
-import {createAction, dispose, createObservable, createObserver} from "../Observable/Observable";
+import {createAction, dispose, createObservable, createObserver, getRawAtomValue} from "../Observable/Observable";
 import {IRefs} from "../commons/IRefs";
 import {addVirtualEventListener} from "../utils/citoEvents";
 import {camelToDashInObject} from "../utils/convertCase";
@@ -297,6 +297,11 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 		this.forceUpdate = createObserver(this.forceUpdate.bind(this));
 		this.set = createAction(this.attrs, this.set.bind(this));
+
+		// tslint:disable-next-line:forin
+		for (const name in this.attrChanged) {
+			this.initAttrChanged(name, this.attrChanged[name]);
+		}
 	}
 
 	/**
@@ -316,6 +321,46 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 		addVirtualEventListener(node, "$destroyed", () => {
 			delete this.refs[name];
+		});
+	}
+
+	/**
+	 * Инициализация обработчика attrChanged
+	 * @param name
+	 * @param handler
+	 */
+	private initAttrChanged(name: string, handler: AttrChangedHandler<any>) {
+		const descriptor = Object.getOwnPropertyDescriptor(this.attrs, name);
+
+		assert(
+			descriptor,
+			"Cannot set attrChanged handler to an unknown attribute.",
+		);
+
+		assert(
+			typeof handler === "function",
+			"attrChanged handler must be a function.",
+		);
+
+		// Сохраним сеттер из observable
+		const observableSetter = descriptor.set;
+
+		/**
+		 * Переопределим сеттер атрибута
+		 * Вклиним вызов attrChanged на это свойство
+		 */
+		Object.defineProperty(this.attrs, name, {
+			...descriptor,
+
+			set: (value: any) => {
+				const prevValue = getRawAtomValue(this.attrs, name);
+
+				if (prevValue !== value) {
+					handler.apply(this, [value, prevValue]);
+				}
+
+				observableSetter(value);
+			},
 		});
 	}
 

@@ -248,3 +248,12 @@ export function createObservableView(object, name, view) {
 export function getAllObservers() {
 	return observers;
 }
+
+/**
+ * Возвращает значение свойства в обход администратора
+ * @param object
+ * @param name
+ */
+export function getRawAtomValue(object, name) {
+	return object[attrsKey][name];
+}

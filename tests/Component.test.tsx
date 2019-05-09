@@ -1,3 +1,5 @@
+// tslint:disable:max-classes-per-file
+
 import * as Simulant from "jsdom-simulant";
 
 import * as Thesis from "../src/index";
@@ -335,6 +337,60 @@ describe("Component", () => {
 			"update",
 			"unmount",
 		]);
+	});
+
+	test("attrChanged", () => {
+		const log: string[] = [];
+
+		interface IPersonAttrs {
+			name: string;
+			age: number;
+			log: string[];
+		}
+
+		class Test extends Thesis.Component<IPersonAttrs> {
+			defaults = {
+				age: NaN,
+				log,
+				name: "Nobody",
+			};
+
+			attrChanged = {
+				age(next, prev) {
+					this.attrs.log.push(`attrChanged age from ${prev} to ${next}`);
+				},
+				name(next, prev) {
+					this.attrs.log.push(`attrChanged name from ${prev} to ${next}`);
+				},
+			};
+
+			render() {
+				const {attrs} = this;
+
+				return (
+					<div>{attrs.name} ({attrs.age})</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+
+		const view = Thesis.createComponent(Test, root, {});
+
+		(view.attrs as IPersonAttrs).name = "Kaibito";
+		(view.attrs as IPersonAttrs).age = 21;
+		(view.attrs as IPersonAttrs).age = 21;
+
+		expect(log).toEqual([
+			"attrChanged name from Nobody to Kaibito",
+			"attrChanged age from NaN to 21",
+		]);
+
+		expect(root.innerHTML).toBe(
+			"<div>Kaibito (21)</div>",
+		);
+
+		Thesis.unmountComponentAtNode(root);
 	});
 
 });
