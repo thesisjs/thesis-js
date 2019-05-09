@@ -16,6 +16,7 @@ export {
 	createObservableView,
 	dispose,
 } from "./Observable/Observable";
+export {createElement} from "./Element/Element";
 export {Component, Element} from "./Component/Component";
 export {Model, View, Action} from "./Model/Model";
 
@@ -81,8 +82,6 @@ export function unmountComponentAtNode(node: Node) {
 	unmarkRootComponent(component);
 	vdom.remove(component[ADMINISTRATOR_KEY].virtualNode);
 }
-
-export const createElement = Component.createElement;
 
 export function createModel<T extends IModel>(
 	constructor: IModelConstructor,
