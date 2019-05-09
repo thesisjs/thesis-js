@@ -1,18 +1,10 @@
 
 export function installSymbolPolyfill() {
-	(window as any).Symbol = function SymbolPolyfill(key) {
-		return `$$${key}`;
-	};
-}
-
-export function symbol(name): symbol {
-	/* istanbul ignore next */
 	if (!(window as any).Symbol) {
-		installSymbolPolyfill();
-		return Symbol(name);
+		(window as any).Symbol = function SymbolPolyfill(key) {
+			return `$$${key}`;
+		};
 	}
-
-	return Symbol(name);
 }
 
 export function isSymbol(name): boolean {
