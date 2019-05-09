@@ -173,7 +173,10 @@ describe("observable", () => {
 
 		car.acceleration = 20;
 
-		expect(speeds).toEqual([20, 20, 10, 10, 10, 20]);
+		// TODO: Удалить
+		carObserver();
+
+		expect(speeds).toEqual([20, 20, 10, 10, /*10,*/ 20]);
 		expect(computed).toBe(5);
 
 		dispose(car);

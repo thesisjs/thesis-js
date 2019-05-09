@@ -8,7 +8,6 @@ import {
 } from "../utils/observableKeys";
 import {assert} from "../utils/assert";
 import {makeObservableAdministrator} from "../ObservableAdministrator/ObservableAdministrator";
-import {makeSymbol} from "../utils/makeSymbol";
 
 const observers = {};
 const observableStack = [];
@@ -24,9 +23,6 @@ interface IViewData {
 }
 
 function makeView(object, name, view, asMethod) {
-	// Связанный с view atom (используется только для "сложных" view с аргументами
-	let boundAtomName;
-
 	// Описание view
 	const viewData: IViewData = object[viewsKey][name] = {
 		cached: null,
@@ -47,15 +43,9 @@ function makeView(object, name, view, asMethod) {
 
 	// Реакция, которая пересчитает заново значение и кладёт в кеш
 	const computeReaction = function $computeReaction() {
-		const isFirstRun = !!viewData.cached;
-
 		viewData.cached = view.apply(object, arguments);
 		// Валидными в кеше считаем только вычисляемые свойства без аргументов
 		viewData.valid = arguments.length === 0;
-		// Отрабатываем реакции на пересчёт view
-		if (!isFirstRun && !viewData.valid && boundAtomName !== undefined) {
-			object[boundAtomName] = NaN;
-		}
 	};
 
 	const viewObserver = viewData.observer = createObserver(clearReaction);
@@ -75,17 +65,10 @@ function makeView(object, name, view, asMethod) {
 
 	if (asMethod) {
 		// Делаем метод
-		boundAtomName = `$$${name}BoundAtom`;
-		makeAtom(object, boundAtomName, NaN);
-
 		Object.defineProperty(object, name, {
 			enumerable: false,
-
-			get() {
-				// Читаем из атома, чтобы повесить на него observer
-				const temp = object[boundAtomName];
-				return viewData.getter;
-			},
+			value: viewData.getter,
+			writable: false,
 		});
 	} else {
 		// Делаем атом-заглушку

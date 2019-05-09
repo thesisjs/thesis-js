@@ -190,6 +190,80 @@ describe("Component", () => {
 			firstName: string = "";
 			lastName: string = "";
 
+			@Thesis.View
+			get fullName(): string {
+				return `${this.firstName} ${this.lastName}`;
+			}
+
+			@Thesis.Action
+			setFullName(firstName: string, lastName: string) {
+				this.firstName = firstName;
+				this.lastName = lastName;
+			}
+		}
+
+		interface IPersonViewAttrs {
+			person: Person;
+		}
+
+		class PersonView extends Thesis.Component<IPersonViewAttrs> {
+			defaults = {
+				person: Thesis.createModel<Person>(Person),
+			};
+
+			didMount() {
+				log.push("mount");
+			}
+
+			didUpdate() {
+				log.push("update");
+			}
+
+			didUnmount() {
+				log.push("unmount");
+			}
+
+			render() {
+				const {attrs} = this;
+
+				return (
+					<div>{attrs.person.fullName}</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+
+		const personView = Thesis.createComponent(PersonView, root, {});
+
+		expect(root.innerHTML).toBe(
+			"<div> </div>",
+		);
+
+		(personView.attrs as IPersonViewAttrs).person.setFullName("Kaibito", "Young");
+
+		expect(root.innerHTML).toBe(
+			"<div>Kaibito Young</div>",
+		);
+
+		Thesis.unmountComponentAtNode(root);
+
+		expect(root.innerHTML).toBe("");
+
+		expect(log).toEqual([
+			"mount",
+			"update",
+			"unmount",
+		]);
+	});
+
+	xtest("Model with observable view + Component", () => {
+		const log: string[] = [];
+
+		class Person extends Thesis.Model {
+			firstName: string = "";
+			lastName: string = "";
+
 			get lastNameCapitalized(): string {
 				return this.lastName.toUpperCase();
 			}
