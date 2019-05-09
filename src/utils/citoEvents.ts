@@ -2,7 +2,7 @@ import {IVirtualEvent, IVirtualNode, VirtualEventType} from "../../vendor/cito";
 
 export function addVirtualEventListener(
 	node: IVirtualNode,
-	event: VirtualEventType,
+	event: VirtualEventType | string,
 	handler: (evt: IVirtualEvent) => any,
 ) {
 	const eventsMap = node.events = node.events || {};

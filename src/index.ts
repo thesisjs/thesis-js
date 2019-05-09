@@ -87,6 +87,23 @@ export function createModel<T extends IModel>(
 	return Model.create<T>(constructor, attrs);
 }
 
+/**
+ * Находит DOM-узел, соответствующий переданному компоненту
+ * @param component
+ */
+export function findDOMNode(component: IComponent): HTMLElement {
+	if (
+		component &&
+		typeof component === "object" &&
+		(component as any).virtualNode &&
+		typeof (component as any).virtualNode === "object"
+	) {
+		return (component as any).virtualNode.dom;
+	}
+
+	return undefined;
+}
+
 // tslint:disable-next-line
 export declare namespace JSX {
 	// tslint:disable-next-line

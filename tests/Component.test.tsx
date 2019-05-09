@@ -12,23 +12,13 @@ describe("Component", () => {
 		interface IButtonAttrs {
 			title: string;
 			disabled: boolean;
-			onClick: ((event: MouseEvent) => void);
 		}
 
 		class Button extends Thesis.Component<IButtonAttrs> {
 			defaults = {
 				disabled: false,
-				onClick: undefined,
 				title: "",
 			};
-
-			events = {
-				click: this.handleClick.bind(this),
-			};
-
-			handleClick(event) {
-				this.attrs.onClick(event);
-			}
 
 			didMount() {
 				log.push("Button did mount");
@@ -374,7 +364,6 @@ describe("Component", () => {
 		}
 
 		const root = document.createElement("MAIN");
-
 		const view = Thesis.createComponent(Test, root, {});
 
 		(view.attrs as IPersonAttrs).name = "Kaibito";
@@ -389,6 +378,109 @@ describe("Component", () => {
 		expect(root.innerHTML).toBe(
 			"<div>Kaibito (21)</div>",
 		);
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
+	test("Input change event", () => {
+		const log: string[] = [];
+
+		class Input extends Thesis.Component<{}> {
+			constructor(attrs) {
+				super(attrs);
+				this.handleChange = this.handleChange.bind(this);
+			}
+
+			handleChange(evt) {
+				expect(evt.target).toBe(this.refs.input);
+				expect(evt.target.outerHTML).toBe("<input>");
+
+				log.push("Input change");
+
+				this.broadcast("custom", "Some data");
+			}
+
+			render() {
+				return (
+					<input
+						ref="input"
+						onChange={this.handleChange}
+						onClick={this.remit("inputClick")}
+					/>
+				);
+			}
+		}
+
+		class Test extends Thesis.Component<{}> {
+			constructor(attrs) {
+				super(attrs);
+				this.handleCustom = this.handleCustom.bind(this);
+				this.handleInputClick = this.handleInputClick.bind(this);
+				this.handleMouseMove = this.handleMouseMove.bind(this);
+			}
+
+			handleCustom(evt) {
+				const inputEl = Thesis.findDOMNode(this.refs.input as Thesis.Component<any>);
+
+				expect(evt.target).toBe(inputEl);
+				expect(evt.target.outerHTML).toBe("<input>");
+				expect(evt.detail).toBe("Some data");
+
+				log.push("Test custom");
+			}
+
+			handleInputClick(evt) {
+				const inputEl = Thesis.findDOMNode(this.refs.input as Thesis.Component<any>);
+
+				expect(evt.target).toBe(inputEl);
+				expect(evt.target.outerHTML).toBe("<input>");
+				expect(evt.detail.originalEvent.type).toBe("click");
+
+				log.push("Test input click");
+			}
+
+			handleMouseMove(evt) {
+				const inputEl = Thesis.findDOMNode(this.refs.input as Thesis.Component<any>);
+
+				expect(evt.target).toBe(inputEl);
+				expect(evt.target.outerHTML).toBe("<input>");
+
+				log.push("Test mouse move");
+			}
+
+			render() {
+				return (
+					<div
+						ref="el"
+						onChange={() => log.push("Test change")}
+						onClick={() => log.push("Test click")}
+						onMouseMove={this.handleMouseMove}
+					>
+						<Input
+							ref="input"
+							onCustom={this.handleCustom}
+							onInputClick={this.handleInputClick}
+						/>
+					</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		Thesis.createComponent(Test, root, {});
+
+		Simulant.fire(root.querySelector("input"), "change");
+		Simulant.fire(root.querySelector("input"), "click");
+		Simulant.fire(root.querySelector("input"), "mousemove");
+
+		expect(log).toEqual([
+			"Input change",
+			// Перехваченные события не всплывают, вместо них -- изменённые
+			"Test custom",
+			"Test input click",
+			// А обычное событие всплывает
+			"Test mouse move",
+		]);
 
 		Thesis.unmountComponentAtNode(root);
 	});

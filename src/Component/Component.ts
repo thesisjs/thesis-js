@@ -10,6 +10,7 @@ import {RenderContext} from "../RenderContext/RenderContext";
 import {assert} from "../utils/assert";
 import {createAction, dispose, createObservable, createObserver, getRawAtomValue} from "../Observable/Observable";
 import {IRefs} from "../commons/IRefs";
+import {IRemitHandlers} from "../commons/IRemitHandlers";
 import {addVirtualEventListener} from "../utils/citoEvents";
 import {camelToDashInObject} from "../utils/convertCase";
 
@@ -65,6 +66,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		let virtualNode: IVirtualNode;
 		let key;
 		let ref;
+		let events;
 
 		if (hasAttrs) {
 			key = attrs.key;
@@ -73,6 +75,50 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			// Удаляем ref из атрибутов узла, чтобы он не попал в DOM или в другой инстанс
 			if (ref !== undefined) {
 				delete attrs.ref;
+			}
+
+			let eventName;
+
+			// Преобразуем обработчики событий
+			for (const name in attrs) {
+				if (!name.startsWith("on")) {
+					continue;
+				}
+
+				if (!events) {
+					events = {};
+				}
+
+				// Сохраним обработчик
+				eventName = name.slice(2).toLowerCase();
+				// TODO: Делегировать события?
+				// TODO: Рефакторинг для производительности и экономии памяти
+				events[eventName] = function $eventHandler(handler, event) {
+					(event as any).stopPropagation();
+
+					const handlerType = typeof handler;
+
+					if (!handler) {
+						return;
+					}
+
+					switch (handlerType) {
+						case "function": return handler(event);
+						case "object": {
+							if (
+								handler.handleEvent &&
+								typeof handler.handleEvent === "string"
+							) {
+								return handler.handleEvent(event);
+							}
+
+							break;
+						}
+					}
+				}.bind(null, attrs[name]);
+
+				// Удалим из атрибутов
+				delete attrs[name];
 			}
 		}
 
@@ -98,6 +144,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			virtualNode = {
 				attrs,
 				children,
+				events,
 				key: key
 					? activeInstance.key + ":" + key
 					: undefined,
@@ -144,6 +191,14 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 			activeInstance.initRef(ref, virtualNode, true);
 		}
 
+		// Добавляем обработчики событий компоненту
+		if (events) {
+			// tslint:disable-next-line:forin
+			for (const eventName in events) {
+				addVirtualEventListener(virtualNode, eventName, events[eventName]);
+			}
+		}
+
 		return virtualNode as IElement;
 	}
 
@@ -161,6 +216,7 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	private virtualNode?: IVirtualNode;
 	private keyStore: IComponentKeyStore = new ComponentKeyStore();
 	private renderContext?: IRenderContext;
+	private remitHandlers?: IRemitHandlers = {};
 
 	constructor(attrs: Partial<IAttrs<P> & ISystemAttrs> = {}) {
 		this.key = attrs.key;
@@ -213,6 +269,48 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		if (isTopLevelUpdate) {
 			renderContext.fireAll();
 		}
+	}
+
+	/**
+	 * Отправляет пользовательское событие вышестоящим компонентам
+	 * @param type
+	 * @param detail
+	 */
+	public broadcast(type: string, detail?: any) {
+		assert(
+			this.virtualNode.dom,
+			"Cannot emit event on an unmounted component.",
+		);
+
+		this.virtualNode.dom.dispatchEvent(
+			new CustomEvent(type.toLowerCase(), {
+				bubbles: false,
+				detail,
+			}),
+		);
+	}
+
+	/**
+	 * Возвращает обработчик события, преобразовывающий DOM событие в пользовательское
+	 * @param {string} newType - новое имя события
+	 */
+	public remit(newType: string) {
+		if (this.remitHandlers[newType]) {
+			return this.remitHandlers[newType];
+		}
+
+		newType = newType.toLowerCase();
+		const this_ = this;
+
+		// TODO: Делегировать события?
+		const remitImpl = function $remit(event: Event) {
+			event.stopPropagation();
+			this_.broadcast(newType, {originalEvent: event});
+		};
+
+		this.remitHandlers[newType] = remitImpl;
+
+		return remitImpl;
 	}
 
 	public set(newAttrs: Partial<IAttrs<P>>) {
