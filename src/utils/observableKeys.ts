@@ -1,13 +1,4 @@
-
-function makeSymbol(name): symbol {
-	/* istanbul ignore else */
-	if ((window as any).Symbol !== void 0) {
-		return Symbol(name);
-	}
-
-	/* istanbul ignore next */
-	return (`$$${name}` as any) as symbol;
-}
+import {makeSymbol} from "./makeSymbol";
 
 export const ATTRS_KEY = makeSymbol("attrs");
 export const ADMINISTRATOR_KEY = makeSymbol("administrator");

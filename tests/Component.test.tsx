@@ -190,10 +190,16 @@ describe("Component", () => {
 			firstName: string = "";
 			lastName: string = "";
 
-			get fullName(): string {
-				return `${this.firstName} ${this.lastName}`;
+			get lastNameCapitalized(): string {
+				return this.lastName.toUpperCase();
 			}
 
+			@Thesis.View
+			getFullName(separator: string) {
+				return `${this.lastNameCapitalized}${separator}${this.firstName}`;
+			}
+
+			@Thesis.Action
 			setFullName(firstName: string, lastName: string) {
 				this.firstName = firstName;
 				this.lastName = lastName;
@@ -206,7 +212,7 @@ describe("Component", () => {
 
 		class PersonView extends Thesis.Component<IPersonViewAttrs> {
 			defaults = {
-				person: Thesis.createModel<Person>(Person),
+				person: undefined,
 			};
 
 			didMount() {
@@ -225,14 +231,15 @@ describe("Component", () => {
 				const {attrs} = this;
 
 				return (
-					<div>{attrs.person.fullName}</div>
+					<div>{attrs.person.getFullName(" ")}</div>
 				);
 			}
 		}
 
 		const root = document.createElement("MAIN");
 
-		const personView = Thesis.createComponent(PersonView, root, {});
+		const person = Thesis.createModel<Person>(Person);
+		const personView = Thesis.createComponent(PersonView, root, {person});
 
 		expect(root.innerHTML).toBe(
 			"<div> </div>",
@@ -241,10 +248,11 @@ describe("Component", () => {
 		(personView.attrs as IPersonViewAttrs).person.setFullName("Kaibito", "Young");
 
 		expect(root.innerHTML).toBe(
-			"<div>Kaibito Young</div>",
+			"<div>YOUNG Kaibito</div>",
 		);
 
 		Thesis.unmountComponentAtNode(root);
+		Thesis.dispose(person);
 
 		expect(root.innerHTML).toBe("");
 

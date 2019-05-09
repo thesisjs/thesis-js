@@ -15,7 +15,7 @@ export {
 	dispose,
 } from "./Observable/Observable";
 export {Component, Element} from "./Component/Component";
-export {Model} from "./Model/Model";
+export {Model, View, Action} from "./Model/Model";
 
 let lastRootKey = 0;
 

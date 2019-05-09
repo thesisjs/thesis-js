@@ -1,4 +1,5 @@
-import {createAction, createObservable} from "../Observable/Observable";
+import {createAction, createObservable, createObservableView} from "../Observable/Observable";
+import {ACTION_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
 
 import {IModel, IModelConstructor} from "./IModel";
 
@@ -87,9 +88,39 @@ export class Model implements IModel {
 			prototype = Object.getPrototypeOf(prototype);
 		}
 
-		// Превращаем все методы в action
+		let method;
+
+		// Превращаем декорированные методы в action или view
 		for (const key of methodNames) {
-			(this as any)[key] = createAction(this, (this as any)[key]);
+			method = (this as any)[key];
+
+			if (method[ACTION_FLAG_KEY]) {
+				(this as any)[key] = createAction(this, method);
+			} else if (method[VIEW_FLAG_KEY]) {
+				createObservableView(this, key, method);
+			}
 		}
+	}
+}
+
+/**
+ * Декоратор, превращающий метод модели в Action
+ */
+export function Action(target, propertyKey: string) {
+	const impl = target[propertyKey];
+
+	if (typeof impl === "function") {
+		impl[ACTION_FLAG_KEY] = true;
+	}
+}
+
+/**
+ * Декоратор, превращающий метод модели в View
+ */
+export function View(target, propertyKey: string) {
+	const impl = target[propertyKey];
+
+	if (typeof impl === "function") {
+		impl[VIEW_FLAG_KEY] = true;
 	}
 }
