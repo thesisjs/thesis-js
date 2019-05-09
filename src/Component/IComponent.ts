@@ -1,6 +1,6 @@
-import {IVirtualNode} from "../../vendor/cito";
 import {IComponentAdministrator} from "../ComponentAdministrator/IComponentAdministrator";
 import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
+import {IElement} from "../Element/IElement";
 
 export type ComponentLifecycleMethod = () => void;
 
@@ -16,7 +16,7 @@ export interface IComponent {
 	set(attrs: object);
 	forceUpdate();
 
-	render(): IVirtualNode;
+	render(): IElement;
 }
 
 export type IComponentConstructor = new (attrs: object) => IComponent;

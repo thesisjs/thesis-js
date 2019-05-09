@@ -1,14 +1,20 @@
 import {IComponent, IComponentConstructor} from "../Component/IComponent";
 import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
-import {IVirtualNode} from "../../vendor/cito";
+import {IVirtualNode, vdom} from "../../vendor/cito";
 import {camelToDashInObject} from "../utils/convertCase";
 import {addVirtualEventListener} from "../utils/citoEvents";
 import {Component} from "../Component/Component";
+import {ISystemAttrs} from "../commons/ISystemAttrs";
+import {RenderContext} from "../RenderContext/RenderContext";
 
 import {IElement} from "./IElement";
 
 // Стек активных инстансов
 const activeInstances: IComponent[] = [];
+
+let lastRootKey = 0;
+
+// ==== Методы для работы со стеком активных компонентов ====
 
 export function pushActiveInstance(component: IComponent) {
 	activeInstances.push(component);
@@ -20,6 +26,63 @@ export function popActiveInstance(): IComponent {
 
 export function getActiveInstance(): IComponent {
 	return activeInstances[activeInstances.length - 1];
+}
+
+// ==== Методы для работы с корневым компонентом ====
+
+export function isRootComponent(component: IComponent): boolean {
+	const {virtualNode} =  component[ADMINISTRATOR_KEY];
+	return virtualNode && virtualNode.dom && (virtualNode.dom as any).__componentInstance__;
+}
+
+export function markRootComponent(component: IComponent) {
+	const node = component[ADMINISTRATOR_KEY].virtualNode.dom;
+	(node as any).__componentInstance__ = component;
+}
+
+export function unmarkRootComponent(component: IComponent) {
+	(component[ADMINISTRATOR_KEY].virtualNode.dom as any).__componentInstance__ = undefined;
+}
+
+export function getMountedRootComponent(node: Node): IComponent {
+	return node && (node as any).__componentInstance__;
+}
+
+// ==== Методы для работы с элементами ====
+
+export function createComponentElement(
+	constructor: IComponentConstructor,
+	target: Node,
+	attrs: any & ISystemAttrs,
+): InstanceType<IComponentConstructor> {
+	// Создаём компонент
+	const instance = new constructor({
+		...attrs,
+		key: lastRootKey++,
+	});
+
+	// Создаём контекст отрисовки
+	const renderContext = new RenderContext();
+	// Настраиваем атрибуты
+	instance[ADMINISTRATOR_KEY].initAttrs(attrs);
+	// Вызываем шаблон компонента
+	(instance as any).forceUpdate(renderContext, {render: false});
+
+	// Очищаем контейнер
+	while (target.firstChild) {
+		target.removeChild(target.firstChild);
+	}
+
+	// Рисуем компонент в контейнере
+	vdom.append(target, instance[ADMINISTRATOR_KEY].virtualNode);
+	// Сохраняем ссылку на компонент в контейнере
+	markRootComponent(instance);
+
+	// Выполняем методы жизненного цикла
+	renderContext.scheduleMount(instance);
+	renderContext.fireAll();
+
+	return instance;
 }
 
 export function createElement(

@@ -8,6 +8,7 @@ import {IModel, IModelConstructor} from "./Model/IModel";
 import {Model} from "./Model/Model";
 import {ADMINISTRATOR_KEY} from "./utils/componentKeys";
 import {installSymbolPolyfill} from "./utils/symbol";
+import {getMountedRootComponent, unmarkRootComponent} from "./Element/Element";
 
 export {
 	createObservable,
@@ -16,66 +17,11 @@ export {
 	createObservableView,
 	dispose,
 } from "./Observable/Observable";
-export {createElement} from "./Element/Element";
-export {Component, Element} from "./Component/Component";
+export {createElement, createComponentElement as createComponent} from "./Element/Element";
+export {Component} from "./Component/Component";
 export {Model, View, Action} from "./Model/Model";
 
 installSymbolPolyfill();
-
-let lastRootKey = 0;
-
-function isRootComponent(component: IComponent): boolean {
-	const {virtualNode} =  component[ADMINISTRATOR_KEY];
-	return virtualNode && virtualNode.dom && (virtualNode.dom as any).__componentInstance__;
-}
-
-function markRootComponent(component: IComponent) {
-	const node = component[ADMINISTRATOR_KEY].virtualNode.dom;
-	(node as any).__componentInstance__ = component;
-}
-
-function unmarkRootComponent(component: IComponent) {
-	(component[ADMINISTRATOR_KEY].virtualNode.dom as any).__componentInstance__ = undefined;
-}
-
-function getMountedRootComponent(node: Node): IComponent {
-	return node && (node as any).__componentInstance__;
-}
-
-export function createComponent(
-	constructor: IComponentConstructor,
-	target: Node,
-	attrs: any & ISystemAttrs,
-): InstanceType<IComponentConstructor> {
-	// Создаём компонент
-	const instance = new constructor({
-		...attrs,
-		key: lastRootKey++,
-	});
-
-	// Создаём контекст отрисовки
-	const renderContext = new RenderContext();
-	// Настраиваем атрибуты
-	instance[ADMINISTRATOR_KEY].initAttrs(attrs);
-	// Вызываем шаблон компонента
-	(instance as any).forceUpdate(renderContext, {render: false});
-
-	// Очищаем контейнер
-	while (target.firstChild) {
-		target.removeChild(target.firstChild);
-	}
-
-	// Рисуем компонент в контейнере
-	vdom.append(target, instance[ADMINISTRATOR_KEY].virtualNode);
-	// Сохраняем ссылку на компонент в контейнере
-	markRootComponent(instance);
-
-	// Выполняем методы жизненного цикла
-	renderContext.scheduleMount(instance);
-	renderContext.fireAll();
-
-	return instance;
-}
 
 export function unmountComponentAtNode(node: Node) {
 	const component = getMountedRootComponent(node.firstChild);

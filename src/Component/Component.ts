@@ -13,12 +13,6 @@ import {popActiveInstance, pushActiveInstance} from "../Element/Element";
 
 import {IComponent} from "./IComponent";
 
-interface IElement extends IVirtualNode {
-	component?: Component<any>;
-}
-
-export type Element = IElement;
-
 export abstract class Component<P extends object> implements IComponent {
 
 	public static instances: {[key: string]: Component<any>} = {};
