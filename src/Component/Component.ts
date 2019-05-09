@@ -24,7 +24,7 @@ const instances: {[key: string]: Component<any>} = {};
 
 export type Element = IElement;
 
-export abstract class Component<P extends object> implements IComponent, EventListenerObject {
+export abstract class Component<P extends object> implements IComponent {
 
 	public static createElement(
 		tag: string | IComponentConstructor,
@@ -209,7 +209,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 	public readonly attrChanged: Partial<IAttrChanged<P>> = {};
 	public readonly defaults: Partial<IAttrs<P>> = {};
-	public readonly events: IEvents = {};
 	public readonly refs: IRefs = {};
 
 	private key: string;
@@ -323,22 +322,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		}
 	}
 
-	public handleEvent(event: Event) {
-		const handler = this.events[event.type];
-
-		// Прокинули имя метода
-		if (typeof handler === "string") {
-			return (this as any)[handler](event);
-		}
-
-		// Прокинули сам метод
-		if (typeof handler === "function") {
-			return handler(event);
-		}
-
-		return true;
-	}
-
 	protected createFragment(renderContext: IRenderContext) {
 		Component.activeInstances.push(this);
 		this.renderContext = renderContext;
@@ -351,7 +334,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 		this.keyStore.clear();
 
 		// Подписываемся на уничтожение блока
-		addVirtualEventListener(virtualNode, "$created", this.handleVirtualEvent);
 		addVirtualEventListener(virtualNode, "$destroyed", this.handleVirtualEvent);
 
 		virtualNode.component = this;
@@ -360,18 +342,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 
 	private handleVirtualEvent(virtualEvent: IVirtualEvent) {
 		switch (virtualEvent.type) {
-			case "$created": {
-				// Устанавливаем обработчики событий
-				const node = this.virtualNode.dom;
-
-				// tslint:disable-next-line:forin
-				for (const name in this.events) {
-					node.addEventListener(name, this);
-				}
-
-				break;
-			}
-
 			case "$destroyed": {
 				this.destroy();
 				break;
@@ -465,14 +435,6 @@ export abstract class Component<P extends object> implements IComponent, EventLi
 	private destroy() {
 		// Убираем реактивность с forceUpdate
 		dispose(this.forceUpdate);
-
-		// Снимаем обработчики событий
-		const node = this.virtualNode.dom;
-
-		// tslint:disable-next-line:forin
-		for (const name in this.events) {
-			node.removeEventListener(name, this);
-		}
 
 		// Удаляем из глобальной коллекции инстансов
 		delete instances[this.key];
