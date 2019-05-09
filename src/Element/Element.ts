@@ -50,6 +50,13 @@ export function getMountedRootComponent(node: Node): IComponent {
 
 // ==== Методы для работы с элементами ====
 
+/**
+ * Основная точка входа Thesis
+ * Экспортируется, как createComponent
+ * @param constructor
+ * @param target
+ * @param attrs
+ */
 export function createComponentElement(
 	constructor: IComponentConstructor,
 	target: Node,
@@ -85,12 +92,153 @@ export function createComponentElement(
 	return instance;
 }
 
-export function createElement(
-	tag: string | IComponentConstructor,
-	attrs?: {[name: string]: any},
-	...children: IElement[]
+/**
+ * Функция создаёт обработчик события, который умеет отменять всплытие
+ * @param attrs
+ * @param name
+ */
+function createEventListener(attrs: { [p: string]: any }, name) {
+	return function $eventHandler(handler, event) {
+		(event as any).stopPropagation();
+
+		const handlerType = typeof handler;
+
+		if (!handler) {
+			return;
+		}
+
+		switch (handlerType) {
+			case "function":
+				return handler(event);
+			case "object": {
+				if (
+					handler.handleEvent &&
+					typeof handler.handleEvent === "string"
+				) {
+					return handler.handleEvent(event);
+				}
+
+				break;
+			}
+		}
+	}.bind(null, attrs[name]);
+}
+
+/**
+ * Рисуем простую ноду
+ * @param tag
+ * @param attrs
+ * @param children
+ * @param events
+ * @param key
+ * @param ref
+ */
+function initVirtualNode(
+	tag: string,
+	attrs: {[name: string]: any},
+	children: IElement[],
+	events,
+	key,
+	ref,
 ): IElement {
-	const isComponent = typeof tag !== "string";
+	const hasAttrs = attrs && typeof attrs === "object";
+
+	// Инстанс, который сейчас рендерится
+	const activeInstance = getActiveInstance();
+	const activeAdmin = activeInstance[ADMINISTRATOR_KEY];
+
+	// Переименовываем className в class для совместимости с JSX
+	if (hasAttrs && attrs.className !== undefined) {
+		attrs.class = attrs.className;
+		delete attrs.className;
+	}
+
+	// Преобразуем имена атрибутов в dash-case
+	if (hasAttrs && attrs.style && typeof attrs.style === "object") {
+		attrs.style = camelToDashInObject(attrs.style);
+	}
+
+	const virtualNode: IElement = {
+		attrs,
+		children,
+		events,
+		key: key
+			? activeAdmin.key + ":" + key
+			: undefined,
+		tag: tag as string,
+	};
+
+	// Инициализируем ref, если он есть
+	if (ref !== undefined) {
+		activeAdmin.initRef(ref, virtualNode, false);
+	}
+
+	return virtualNode;
+}
+
+/**
+ * Рисуем компонент
+ * @param tag
+ * @param attrs
+ * @param children
+ * @param events
+ * @param key
+ * @param ref
+ */
+function initComponent(
+	tag: IComponentConstructor,
+	attrs: {[name: string]: any},
+	children: IElement[],
+	events,
+	key,
+	ref,
+): IElement {
+	attrs.children = children;
+
+	// Инстанс, который сейчас рендерится
+	const activeInstance = getActiveInstance();
+	const activeAdmin = activeInstance[ADMINISTRATOR_KEY];
+
+	let instance = Component.instances[key];
+
+	if (!instance) {
+		// Компонента не было, создаём
+		instance = new (tag as any)(attrs);
+		// Инициализируем ему атрибуты
+		instance[ADMINISTRATOR_KEY].initAttrs(attrs);
+		// Первый раз создаём фрагмент руками
+		instance.forceUpdate(activeAdmin.renderContext, {render: false});
+
+		activeAdmin.renderContext.scheduleMount(instance);
+	} else {
+		// Компонент был, обновляем
+		instance.set(attrs);
+
+		// К этому моменту у него уже должен был произойти вызов createFragment
+		// Так как реактивность
+	}
+
+	// Добавляем компонент в глобальную коллекцию
+	Component.instances[key] = instance;
+	const virtualNode = instance[ADMINISTRATOR_KEY].virtualNode;
+
+	// Инициализируем ref с этим компонентом у родительского, если он есть
+	if (ref !== undefined) {
+		activeAdmin.initRef(ref, virtualNode, true);
+	}
+
+	// Добавляем обработчики событий компоненту
+	if (events) {
+		// tslint:disable-next-line:forin
+		for (const eventName in events) {
+			addVirtualEventListener(virtualNode, eventName, events[eventName]);
+		}
+	}
+
+	return virtualNode;
+}
+
+function normalizeChildren(children: IElement[], attrs: {[p: string]: any}) {
 	const hasAttrs = attrs && typeof attrs === "object";
 	const hasInnerHTML = hasAttrs && typeof attrs.dangerouslySetInnerHTML === "object";
 
@@ -120,11 +268,29 @@ export function createElement(
 		}
 	}
 
+	return children;
+}
+
+/**
+ * Основная точка входа для JSX
+ * @param tag
+ * @param attrs
+ * @param children
+ */
+export function createElement(
+	tag: string | IComponentConstructor,
+	attrs?: {[name: string]: any},
+	...children: IElement[]
+): IElement {
+	const isComponent = typeof tag !== "string";
+	const hasAttrs = attrs && typeof attrs === "object";
+
+	children = normalizeChildren(children, attrs);
+
 	// Инстанс, который сейчас рендерится
 	const activeInstance = getActiveInstance();
 	const activeAdmin = activeInstance[ADMINISTRATOR_KEY];
 
-	let virtualNode: IVirtualNode;
 	let key;
 	let ref;
 	let events;
@@ -154,29 +320,7 @@ export function createElement(
 			eventName = name.slice(2).toLowerCase();
 			// TODO: Делегировать события?
 			// TODO: Рефакторинг для производительности и экономии памяти
-			events[eventName] = function $eventHandler(handler, event) {
-				(event as any).stopPropagation();
-
-				const handlerType = typeof handler;
-
-				if (!handler) {
-					return;
-				}
-
-				switch (handlerType) {
-					case "function": return handler(event);
-					case "object": {
-						if (
-							handler.handleEvent &&
-							typeof handler.handleEvent === "string"
-						) {
-							return handler.handleEvent(event);
-						}
-
-						break;
-					}
-				}
-			}.bind(null, attrs[name]);
+			events[eventName] = createEventListener(attrs, name);
 
 			// Удалим из атрибутов
 			delete attrs[name];
@@ -189,76 +333,10 @@ export function createElement(
 			tag as IComponentConstructor,
 		);
 	} else if (!isComponent) {
-		// ==== Случай, когда рисуем простую ноду (это можно и без ключа) ====
-
-		// Переименовываем className в class для совместимости с JSX
-		if (hasAttrs && attrs.className !== undefined) {
-			attrs.class = attrs.className;
-			delete attrs.className;
-		}
-
-		// Преобразуем имена атрибутов в dash-case
-		if (hasAttrs && attrs.style && typeof attrs.style === "object") {
-			attrs.style = camelToDashInObject(attrs.style);
-		}
-
-		virtualNode = {
-			attrs,
-			children,
-			events,
-			key: key
-				? activeAdmin.key + ":" + key
-				: undefined,
-			tag: tag as string,
-		};
-
-		// Инициализируем ref, если он есть
-		if (ref !== undefined) {
-			activeAdmin.initRef(ref, virtualNode, false);
-		}
-
-		return virtualNode as IElement;
+		// Случай, когда рисуем простую ноду (это можно и без ключа)
+		return initVirtualNode(tag as string, attrs, children, events, key, ref);
 	}
 
-	// ==== Остальное относится к случаю, когда рисуем компонент ====
-
-	attrs.children = children;
-
-	let instance = Component.instances[key];
-
-	if (!instance) {
-		// Компонента не было, создаём
-		instance = new (tag as any)(attrs);
-		// Инициализируем ему атрибуты
-		instance[ADMINISTRATOR_KEY].initAttrs(attrs);
-		// Первый раз создаём фрагмент руками
-		instance.forceUpdate(activeAdmin.renderContext, {render: false});
-
-		activeAdmin.renderContext.scheduleMount(instance);
-	} else {
-		// Компонент был, обновляем
-		instance.set(attrs);
-
-		// К этому моменту у него уже должен был произойти вызов createFragment
-		// Так как реактивность
-	}
-
-	// Добавляем компонент в глобальную коллекцию
-	Component.instances[key] = instance;
-	virtualNode = instance[ADMINISTRATOR_KEY].virtualNode;
-
-	// Инициализируем ref с этим компонентом у родительского, если он есть
-	if (ref !== undefined) {
-		activeAdmin.initRef(ref, virtualNode, true);
-	}
-
-	// Добавляем обработчики событий компоненту
-	if (events) {
-		// tslint:disable-next-line:forin
-		for (const eventName in events) {
-			addVirtualEventListener(virtualNode, eventName, events[eventName]);
-		}
-	}
-
-	return virtualNode as IElement;
+	// Остальное относится к случаю, когда рисуем компонент
+	return initComponent(tag as IComponentConstructor, attrs, children, events, key, ref);
 }
