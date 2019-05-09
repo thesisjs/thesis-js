@@ -1,11 +1,11 @@
 import {IComponent, IComponentConstructor} from "../Component/IComponent";
 import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
-import {IVirtualNode, vdom} from "../../vendor/cito";
+import {vdom} from "../../vendor/cito";
 import {camelToDashInObject} from "../utils/convertCase";
 import {addVirtualEventListener} from "../utils/citoEvents";
-import {Component} from "../Component/Component";
 import {ISystemAttrs} from "../commons/ISystemAttrs";
 import {RenderContext} from "../RenderContext/RenderContext";
+import {getComponentInstance, saveComponentInstance} from "../ComponentAdministrator/ComponentAdministrator";
 
 import {IElement} from "./IElement";
 
@@ -199,7 +199,7 @@ function initComponent(
 	const activeInstance = getActiveInstance();
 	const activeAdmin = activeInstance[ADMINISTRATOR_KEY];
 
-	let instance = Component.instances[key];
+	let instance = getComponentInstance(key);
 
 	if (!instance) {
 		// Компонента не было, создаём
@@ -219,7 +219,8 @@ function initComponent(
 	}
 
 	// Добавляем компонент в глобальную коллекцию
-	Component.instances[key] = instance;
+	saveComponentInstance(key, instance);
+
 	const virtualNode = instance[ADMINISTRATOR_KEY].virtualNode;
 
 	// Инициализируем ref с этим компонентом у родительского, если он есть

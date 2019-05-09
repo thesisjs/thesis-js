@@ -15,8 +15,6 @@ import {IComponent} from "./IComponent";
 
 export abstract class Component<P extends object> implements IComponent {
 
-	public static instances: {[key: string]: Component<any>} = {};
-
 	public readonly [ADMINISTRATOR_KEY];
 	public readonly attrs: Partial<IAttrs<P> & ISystemAttrs>;
 

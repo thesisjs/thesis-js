@@ -44,7 +44,7 @@ describe("Component", () => {
 				log.push("Button did unmount");
 			}
 
-			render(): Thesis.Element {
+			render() {
 				const {attrs} = this;
 
 				return (
@@ -107,7 +107,7 @@ describe("Component", () => {
 				log.push("Test did unmount");
 			}
 
-			render(): Thesis.Element {
+			render() {
 				const {attrs} = this;
 
 				return (

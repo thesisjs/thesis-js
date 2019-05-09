@@ -1,8 +1,6 @@
 import {vdom} from "../vendor/cito";
 
-import {IComponent, IComponentConstructor} from "./Component/IComponent";
-import {ISystemAttrs} from "./commons/ISystemAttrs";
-import {RenderContext} from "./RenderContext/RenderContext";
+import {IComponent} from "./Component/IComponent";
 import {Component} from "./Component/Component";
 import {IModel, IModelConstructor} from "./Model/IModel";
 import {Model} from "./Model/Model";
@@ -17,6 +15,7 @@ export {
 	createObservableView,
 	dispose,
 } from "./Observable/Observable";
+export {IElement as Element} from "./Element/IElement";
 export {createElement, createComponentElement as createComponent} from "./Element/Element";
 export {Component} from "./Component/Component";
 export {Model, View, Action} from "./Model/Model";

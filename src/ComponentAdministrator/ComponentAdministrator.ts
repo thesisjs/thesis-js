@@ -1,4 +1,3 @@
-import {Component} from "../Component/Component";
 import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
 import {IVirtualEvent} from "../../vendor/cito";
 import {IElement} from "../Element/IElement";
@@ -17,15 +16,33 @@ import {addVirtualEventListener} from "../utils/citoEvents";
 
 import {IComponentAdministrator} from "./IComponentAdministrator";
 
+const instances: {[key: string]: IComponent} = {};
+
+export function getComponentInstances() {
+	return instances;
+}
+
+export function getComponentInstance(key: string) {
+	return instances[key];
+}
+
+export function saveComponentInstance(key: string, instance: IComponent) {
+	instances[key] = instance;
+}
+
+export function removeComponentInstance(key: string) {
+	delete instances[key];
+}
+
 export class ComponentAdministrator<P extends object> implements IComponentAdministrator {
-	public component: Component<P>;
+	public component: IComponent;
 	public key;
 	public keyStore = new ComponentKeyStore();
 	public remitHandlers = {};
 	public renderContext;
 	public virtualNode;
 
-	constructor(component: Component<P>, attrs: Partial<IAttrs<P> & ISystemAttrs>) {
+	constructor(component: IComponent, attrs: Partial<IAttrs<P> & ISystemAttrs>) {
 		this.component = component;
 		this.key = attrs.key;
 	}
@@ -141,7 +158,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 		dispose(this.component.forceUpdate);
 
 		// Удаляем из глобальной коллекции инстансов
-		delete Component.instances[this.key];
+		delete instances[this.key];
 
 		// Вызываем метод жизненного цикла
 		this.callUnmount();
