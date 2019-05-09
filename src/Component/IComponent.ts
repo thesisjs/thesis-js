@@ -1,8 +1,11 @@
 import {IVirtualNode} from "../../vendor/cito";
+import {IComponentAdministrator} from "../ComponentAdministrator/IComponentAdministrator";
+import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
 
 export type ComponentLifecycleMethod = () => void;
 
 export interface IComponent {
+	readonly [ADMINISTRATOR_KEY]: IComponentAdministrator;
 	readonly attrs: object;
 
 	didMount?: ComponentLifecycleMethod;

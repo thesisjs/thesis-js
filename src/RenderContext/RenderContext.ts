@@ -1,4 +1,5 @@
 import {IComponent} from "../Component/IComponent";
+import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
 
 import {IRenderContext} from "./IRenderContext";
 
@@ -18,11 +19,11 @@ export class RenderContext implements IRenderContext {
 		let component;
 
 		for (component of this.mounts) {
-			component.didMount && component.didMount();
+			component[ADMINISTRATOR_KEY].callMount();
 		}
 
 		for (component of this.updates) {
-			component.didUpdate && component.didUpdate();
+			component[ADMINISTRATOR_KEY].callUpdate();
 		}
 
 		this.mounts = [];

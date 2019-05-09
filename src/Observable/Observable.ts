@@ -8,6 +8,7 @@ import {
 } from "../utils/observableKeys";
 import {assert} from "../utils/assert";
 import {makeObservableAdministrator} from "../ObservableAdministrator/ObservableAdministrator";
+import {isSymbol} from "../utils/symbol";
 
 const observers = {};
 const observableStack = [];
@@ -161,6 +162,10 @@ export function createObservable(object) {
 
 	// Проходимся по всем ключам объекта
 	for (const key of keys) {
+		if (isSymbol(key)) {
+			continue;
+		}
+
 		descriptor = Object.getOwnPropertyDescriptor(object, key);
 
 		if (descriptor.get) {

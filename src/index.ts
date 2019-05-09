@@ -6,6 +6,8 @@ import {RenderContext} from "./RenderContext/RenderContext";
 import {Component} from "./Component/Component";
 import {IModel, IModelConstructor} from "./Model/IModel";
 import {Model} from "./Model/Model";
+import {ADMINISTRATOR_KEY} from "./utils/componentKeys";
+import {installSymbolPolyfill} from "./utils/symbol";
 
 export {
 	createObservable,
@@ -17,20 +19,22 @@ export {
 export {Component, Element} from "./Component/Component";
 export {Model, View, Action} from "./Model/Model";
 
+installSymbolPolyfill();
+
 let lastRootKey = 0;
 
 function isRootComponent(component: IComponent): boolean {
-	const {virtualNode} =  component as any;
-	return virtualNode && virtualNode.dom && virtualNode.dom.__componentInstance__;
+	const {virtualNode} =  component[ADMINISTRATOR_KEY];
+	return virtualNode && virtualNode.dom && (virtualNode.dom as any).__componentInstance__;
 }
 
 function markRootComponent(component: IComponent) {
-	const node = (component as any).virtualNode.dom;
-	node.__componentInstance__ = component;
+	const node = component[ADMINISTRATOR_KEY].virtualNode.dom;
+	(node as any).__componentInstance__ = component;
 }
 
 function unmarkRootComponent(component: IComponent) {
-	(component as any).virtualNode.dom.__componentInstance__ = undefined;
+	(component[ADMINISTRATOR_KEY].virtualNode.dom as any).__componentInstance__ = undefined;
 }
 
 function getMountedRootComponent(node: Node): IComponent {
@@ -51,7 +55,7 @@ export function createComponent(
 	// Создаём контекст отрисовки
 	const renderContext = new RenderContext();
 	// Настраиваем атрибуты
-	(instance as any).initAttrs(attrs);
+	instance[ADMINISTRATOR_KEY].initAttrs(attrs);
 	// Вызываем шаблон компонента
 	(instance as any).forceUpdate(renderContext, {render: false});
 
@@ -61,7 +65,7 @@ export function createComponent(
 	}
 
 	// Рисуем компонент в контейнере
-	vdom.append(target, (instance as any).virtualNode);
+	vdom.append(target, instance[ADMINISTRATOR_KEY].virtualNode);
 	// Сохраняем ссылку на компонент в контейнере
 	markRootComponent(instance);
 
@@ -75,7 +79,7 @@ export function createComponent(
 export function unmountComponentAtNode(node: Node) {
 	const component = getMountedRootComponent(node.firstChild);
 	unmarkRootComponent(component);
-	vdom.remove((component as any).virtualNode);
+	vdom.remove(component[ADMINISTRATOR_KEY].virtualNode);
 }
 
 export const createElement = Component.createElement;
@@ -95,10 +99,10 @@ export function findDOMNode(component: IComponent): HTMLElement {
 	if (
 		component &&
 		typeof component === "object" &&
-		(component as any).virtualNode &&
-		typeof (component as any).virtualNode === "object"
+		component[ADMINISTRATOR_KEY].virtualNode &&
+		typeof component[ADMINISTRATOR_KEY].virtualNode === "object"
 	) {
-		return (component as any).virtualNode.dom;
+		return component[ADMINISTRATOR_KEY].virtualNode.dom as HTMLElement;
 	}
 
 	return undefined;

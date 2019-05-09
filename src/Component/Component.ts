@@ -1,18 +1,15 @@
+import {RenderContext} from "../RenderContext/RenderContext";
 import {IRenderContext} from "../RenderContext/IRenderContext";
-import {AttrChangedHandler, IAttrChanged} from "../commons/IAttrChanged";
 import {IAttrs} from "../commons/IAttrs";
 import {ISystemAttrs} from "../commons/ISystemAttrs";
-import {vdom, IVirtualEvent, IVirtualNode} from "../../vendor/cito";
-import {IEvents} from "../commons/IEvents";
-import {IComponentKeyStore} from "../ComponentKeyStore/IComponentKeyStore";
-import {ComponentKeyStore} from "../ComponentKeyStore/ComponentKeyStore";
-import {RenderContext} from "../RenderContext/RenderContext";
+import {vdom, IVirtualNode} from "../../vendor/cito";
+import {IAttrChanged} from "../commons/IAttrChanged";
 import {assert} from "../utils/assert";
-import {createAction, dispose, createObservable, createObserver, getRawAtomValue} from "../Observable/Observable";
 import {IRefs} from "../commons/IRefs";
-import {IRemitHandlers} from "../commons/IRemitHandlers";
 import {addVirtualEventListener} from "../utils/citoEvents";
 import {camelToDashInObject} from "../utils/convertCase";
+import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
+import {ComponentAdministrator} from "../ComponentAdministrator/ComponentAdministrator";
 
 import {IComponent, IComponentConstructor} from "./IComponent";
 
@@ -20,11 +17,11 @@ interface IElement extends IVirtualNode {
 	component?: Component<any>;
 }
 
-const instances: {[key: string]: Component<any>} = {};
-
 export type Element = IElement;
 
 export abstract class Component<P extends object> implements IComponent {
+
+	public static instances: {[key: string]: Component<any>} = {};
 
 	public static createElement(
 		tag: string | IComponentConstructor,
@@ -63,6 +60,8 @@ export abstract class Component<P extends object> implements IComponent {
 
 		// Инстанс, который сейчас рендерится
 		const activeInstance = Component.activeInstances[Component.activeInstances.length - 1];
+		const activeAdmin = activeInstance[ADMINISTRATOR_KEY];
+
 		let virtualNode: IVirtualNode;
 		let key;
 		let ref;
@@ -124,7 +123,7 @@ export abstract class Component<P extends object> implements IComponent {
 
 		if (isComponent && !key) {
 			// Генерируем компоненту ключ
-			key = activeInstance.key + ":" + activeInstance.keyStore.nextKeyFor(
+			key = activeAdmin.key + ":" + activeAdmin.keyStore.nextKeyFor(
 				tag as IComponentConstructor,
 			);
 		} else if (!isComponent) {
@@ -146,14 +145,14 @@ export abstract class Component<P extends object> implements IComponent {
 				children,
 				events,
 				key: key
-					? activeInstance.key + ":" + key
+					? activeAdmin.key + ":" + key
 					: undefined,
 				tag: tag as string,
 			};
 
 			// Инициализируем ref, если он есть
 			if (ref !== undefined) {
-				activeInstance.initRef(ref, virtualNode, false);
+				activeAdmin.initRef(ref, virtualNode, false);
 			}
 
 			return virtualNode as IElement;
@@ -163,17 +162,17 @@ export abstract class Component<P extends object> implements IComponent {
 
 		attrs.children = children;
 
-		let instance = instances[key];
+		let instance = Component.instances[key];
 
 		if (!instance) {
 			// Компонента не было, создаём
 			instance = new (tag as any)(attrs);
 			// Инициализируем ему атрибуты
-			instance.initAttrs(attrs);
+			instance[ADMINISTRATOR_KEY].initAttrs(attrs);
 			// Первый раз создаём фрагмент руками
-			instance.forceUpdate(activeInstance.renderContext, {render: false});
+			instance.forceUpdate(activeAdmin.renderContext, {render: false});
 
-			activeInstance.renderContext.scheduleMount(instance);
+			activeAdmin.renderContext.scheduleMount(instance);
 		} else {
 			// Компонент был, обновляем
 			instance.set(attrs);
@@ -183,12 +182,12 @@ export abstract class Component<P extends object> implements IComponent {
 		}
 
 		// Добавляем компонент в глобальную коллекцию
-		instances[key] = instance;
-		virtualNode = (instance as any).virtualNode;
+		Component.instances[key] = instance;
+		virtualNode = instance[ADMINISTRATOR_KEY].virtualNode;
 
 		// Инициализируем ref с этим компонентом у родительского, если он есть
 		if (ref !== undefined) {
-			activeInstance.initRef(ref, virtualNode, true);
+			activeAdmin.initRef(ref, virtualNode, true);
 		}
 
 		// Добавляем обработчики событий компоненту
@@ -205,22 +204,17 @@ export abstract class Component<P extends object> implements IComponent {
 	// Стек активных инстансов
 	private static activeInstances: Array<Component<any>> = [];
 
+	public readonly [ADMINISTRATOR_KEY];
 	public readonly attrs: Partial<IAttrs<P> & ISystemAttrs>;
 
 	public readonly attrChanged: Partial<IAttrChanged<P>> = {};
 	public readonly defaults: Partial<IAttrs<P>> = {};
 	public readonly refs: IRefs = {};
 
-	private key: string;
-	private virtualNode?: IVirtualNode;
-	private keyStore: IComponentKeyStore = new ComponentKeyStore();
-	private renderContext?: IRenderContext;
-	private remitHandlers?: IRemitHandlers = {};
-
 	constructor(attrs: Partial<IAttrs<P> & ISystemAttrs> = {}) {
-		this.key = attrs.key;
+		this[ADMINISTRATOR_KEY] = new ComponentAdministrator(this, attrs);
 
-		// Инициализация компонента находится в this.initAttrs
+		// Инициализация компонента находится в this[ADMINISTRATOR_KEY].initAttrs
 	}
 
 	public abstract render(): IVirtualNode;
@@ -229,6 +223,8 @@ export abstract class Component<P extends object> implements IComponent {
 		renderContext?: IRenderContext,
 		{render} = {render: true},
 	) {
+		const admin = this[ADMINISTRATOR_KEY];
+
 		// Обновление верхнего уровня, то есть мы должны в начале создать
 		// очередь на mount/update, а в конце её выполнить
 		// Вложенные обновления получат нашу очередь
@@ -239,19 +235,19 @@ export abstract class Component<P extends object> implements IComponent {
 		}
 
 		// Сохраняем старую ноду (для случая фрагмента)
-		const prevVirtualNode = this.virtualNode;
+		const prevVirtualNode = admin.virtualNode;
 		// Выполняем шаблон
 		this.createFragment(renderContext);
 
 		if (prevVirtualNode) {
 			assert(
-				this.virtualNode.tag === prevVirtualNode.tag,
+				admin.virtualNode.tag === prevVirtualNode.tag,
 				"Component cannot change it's root tag name",
 			);
 		}
 
 		assert(
-			this.virtualNode.tag !== undefined,
+			admin.virtualNode.tag !== undefined,
 			"Fragments are not currently supported",
 		);
 
@@ -262,7 +258,7 @@ export abstract class Component<P extends object> implements IComponent {
 
 		if (render) {
 			// Обновляем vdom
-			vdom.update(prevVirtualNode, this.virtualNode);
+			vdom.update(prevVirtualNode, admin.virtualNode);
 		}
 
 		if (isTopLevelUpdate) {
@@ -276,12 +272,14 @@ export abstract class Component<P extends object> implements IComponent {
 	 * @param detail
 	 */
 	public broadcast(type: string, detail?: any) {
+		const admin = this[ADMINISTRATOR_KEY];
+
 		assert(
-			this.virtualNode.dom,
+			admin.virtualNode.dom,
 			"Cannot emit event on an unmounted component.",
 		);
 
-		this.virtualNode.dom.dispatchEvent(
+		admin.virtualNode.dom.dispatchEvent(
 			new CustomEvent(type.toLowerCase(), {
 				bubbles: false,
 				detail,
@@ -294,8 +292,10 @@ export abstract class Component<P extends object> implements IComponent {
 	 * @param {string} newType - новое имя события
 	 */
 	public remit(newType: string) {
-		if (this.remitHandlers[newType]) {
-			return this.remitHandlers[newType];
+		const admin = this[ADMINISTRATOR_KEY];
+
+		if (admin.remitHandlers[newType]) {
+			return admin.remitHandlers[newType];
 		}
 
 		newType = newType.toLowerCase();
@@ -307,7 +307,7 @@ export abstract class Component<P extends object> implements IComponent {
 			this_.broadcast(newType, {originalEvent: event});
 		};
 
-		this.remitHandlers[newType] = remitImpl;
+		admin.remitHandlers[newType] = remitImpl;
 
 		return remitImpl;
 	}
@@ -323,127 +323,27 @@ export abstract class Component<P extends object> implements IComponent {
 	}
 
 	protected createFragment(renderContext: IRenderContext) {
+		const admin = this[ADMINISTRATOR_KEY];
+
 		Component.activeInstances.push(this);
-		this.renderContext = renderContext;
+		admin.renderContext = renderContext;
 
 		const virtualNode = this.render();
 
-		this.renderContext = undefined;
+		admin.renderContext = undefined;
 		Component.activeInstances.pop();
 
-		this.keyStore.clear();
+		admin.keyStore.clear();
 
 		// Подписываемся на уничтожение блока
-		addVirtualEventListener(virtualNode, "$destroyed", this.handleVirtualEvent);
+		addVirtualEventListener(
+			virtualNode,
+			"$destroyed",
+			admin.handleVirtualEvent,
+		);
 
 		virtualNode.component = this;
-		this.virtualNode = virtualNode;
+		admin.virtualNode = virtualNode;
 	}
 
-	private handleVirtualEvent(virtualEvent: IVirtualEvent) {
-		switch (virtualEvent.type) {
-			case "$destroyed": {
-				this.destroy();
-				break;
-			}
-		}
-	}
-
-	/**
-	 * Инициализация в отдельном методе, чтобы вызвать её после того,
-	 * как отработают все конструкторы
-	 * @param attrs
-	 */
-	private initAttrs(attrs: Partial<IAttrs<P>> = {}) {
-		(this as any).attrs = createObservable({
-			children: undefined,
-			...this.defaults,
-			...attrs,
-		});
-
-		this.handleVirtualEvent = this.handleVirtualEvent.bind(this);
-
-		this.forceUpdate = createObserver(this.forceUpdate.bind(this));
-		this.set = createAction(this.attrs, this.set.bind(this));
-
-		// tslint:disable-next-line:forin
-		for (const name in this.attrChanged) {
-			this.initAttrChanged(name, this.attrChanged[name]);
-		}
-	}
-
-	/**
-	 * Инициализация ref-а
-	 * @param name
-	 * @param node
-	 * @param isComponent
-	 */
-	private initRef(name: string, node: IVirtualNode, isComponent: boolean) {
-		addVirtualEventListener(node, "$created", () => {
-			if (isComponent) {
-				this.refs[name] = node.component;
-			} else {
-				this.refs[name] = node.dom as HTMLElement;
-			}
-		});
-
-		addVirtualEventListener(node, "$destroyed", () => {
-			delete this.refs[name];
-		});
-	}
-
-	/**
-	 * Инициализация обработчика attrChanged
-	 * @param name
-	 * @param handler
-	 */
-	private initAttrChanged(name: string, handler: AttrChangedHandler<any>) {
-		const descriptor = Object.getOwnPropertyDescriptor(this.attrs, name);
-
-		assert(
-			descriptor,
-			"Cannot set attrChanged handler to an unknown attribute.",
-		);
-
-		assert(
-			typeof handler === "function",
-			"attrChanged handler must be a function.",
-		);
-
-		// Сохраним сеттер из observable
-		const observableSetter = descriptor.set;
-
-		/**
-		 * Переопределим сеттер атрибута
-		 * Вклиним вызов attrChanged на это свойство
-		 */
-		Object.defineProperty(this.attrs, name, {
-			...descriptor,
-
-			set: (value: any) => {
-				const prevValue = getRawAtomValue(this.attrs, name);
-
-				if (prevValue !== value) {
-					handler.apply(this, [value, prevValue]);
-				}
-
-				observableSetter(value);
-			},
-		});
-	}
-
-	private destroy() {
-		// Убираем реактивность с forceUpdate
-		dispose(this.forceUpdate);
-
-		// Удаляем из глобальной коллекции инстансов
-		delete instances[this.key];
-
-		// Вызываем метод жизненного цикла
-		const didUnmount = (this as IComponent).didUnmount;
-		didUnmount && didUnmount.apply(this);
-
-		// Освобождаем attrs в конце потому, что они могли понадобиться в didUnmount
-		dispose(this.attrs);
-	}
 }
