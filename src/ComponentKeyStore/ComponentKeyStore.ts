@@ -3,21 +3,21 @@ import {IComponentConstructor} from "../Component/IComponent";
 import {IComponentKeyStore} from "./IComponentKeyStore";
 
 export class ComponentKeyStore implements IComponentKeyStore {
-	private lastKeys: Map<IComponentConstructor, number> = new Map<IComponentConstructor, number>();
+	private lastKeys: {[name: string]: number} = {};
 
 	public clear(): void {
-		this.lastKeys.clear();
+		this.lastKeys = {};
 	}
 
 	public nextKeyFor(constructor: IComponentConstructor): string {
-		if (!this.lastKeys.has(constructor)) {
-			this.lastKeys.set(constructor, 1);
-			return String(1);
+		const name = constructor.name || "$anonymous";
+
+		if (!this.lastKeys[name]) {
+			this.lastKeys[name] = 1;
+			return `${name}:1`;
 		}
 
-		const nextKey = this.lastKeys.get(constructor) + 1;
-		this.lastKeys.set(constructor, nextKey);
-
-		return String(nextKey);
+		this.lastKeys[name]++;
+		return `${name}:${this.lastKeys[name]}`;
 	}
 }
