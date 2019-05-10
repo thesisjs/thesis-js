@@ -1,6 +1,7 @@
-import {Action, disposeModel, Model} from "../Model/Model";
+import {Action, Model} from "../Model/Model";
 import {IModel, IModelConstructor} from "../Model/IModel";
 import {dispose, getRawAtomValue, makeAtom, removeAtom} from "../Observable/Observable";
+import {disposeModelLike} from "../utils/disposeModelLike";
 
 export class ModelList extends Model implements ArrayLike<any> {
 
@@ -421,6 +422,16 @@ export class ModelList extends Model implements ArrayLike<any> {
 		return this.itemConstructor;
 	}
 
+	protected dispose() {
+		const {length} = this;
+
+		for (let i = 0; i < length; i++) {
+			disposeModelListItem(this, i);
+		}
+
+		super.dispose();
+	}
+
 	private initLength() {
 		// Переопределяем длину
 		const descriptor = Object.getOwnPropertyDescriptor(this, "length");
@@ -472,22 +483,5 @@ export class ModelList extends Model implements ArrayLike<any> {
 
 function disposeModelListItem(models: ModelList, index: number) {
 	const item = models[index];
-
-	if (item instanceof ModelList) {
-		disposeModelList(item);
-	} else if (item instanceof Model) {
-		disposeModel(item);
-	} else {
-		dispose(item);
-	}
-}
-
-export function disposeModelList(models: ModelList) {
-	const {length} = models;
-
-	for (let i = 0; i < length; i++) {
-		disposeModelListItem(models, i);
-	}
-
-	dispose(models);
+	disposeModelLike(item) || dispose(item);
 }

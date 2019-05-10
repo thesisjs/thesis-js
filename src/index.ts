@@ -3,12 +3,12 @@ import {vdom} from "../vendor/cito";
 import {IComponent} from "./Component/IComponent";
 import {Component} from "./Component/Component";
 import {IModel, IModelConstructor} from "./Model/IModel";
-import {disposeModel, Model} from "./Model/Model";
+import {Model} from "./Model/Model";
 import {ADMINISTRATOR_KEY} from "./utils/componentKeys";
 import {installSymbolPolyfill} from "./utils/symbol";
 import {getMountedRootComponent, unmarkRootComponent} from "./Element/Element";
 import {dispose as disposeAnyObservable} from "./Observable/Observable";
-import {ModelList, disposeModelList} from "./ModelList/ModelList";
+import {disposeModelLike} from "./utils/disposeModelLike";
 
 export {
 	createObservable,
@@ -22,6 +22,7 @@ export {createElement, createComponentElement as createComponent} from "./Elemen
 export {Component} from "./Component/Component";
 export {Model, View, Action, AsyncAction, ControlledModel} from "./Model/Model";
 export {ModelList} from "./ModelList/ModelList";
+export {ModelMap} from "./ModelMap/ModelMap";
 
 installSymbolPolyfill();
 
@@ -56,13 +57,7 @@ export function findDOMNode(component: IComponent): HTMLElement {
 }
 
 export function dispose(obj: any) {
-	if (obj instanceof ModelList) {
-		disposeModelList(obj);
-	} else if (obj instanceof Model) {
-		disposeModel(obj);
-	} else {
-		disposeAnyObservable(obj);
-	}
+	disposeModelLike(obj) || disposeAnyObservable(obj);
 }
 
 // tslint:disable-next-line

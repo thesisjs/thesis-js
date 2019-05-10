@@ -5,7 +5,11 @@ import {
 	createObservableView, dispose,
 	getRawAtomValue,
 } from "../Observable/Observable";
-import {ACTION_FLAG_KEY, ASYNC_ACTION_FLAG_KEY, REFERENCE_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
+import {
+	ACTION_FLAG_KEY,
+	ASYNC_ACTION_FLAG_KEY,
+	VIEW_FLAG_KEY,
+} from "../utils/modelKeys";
 
 import {IModel, IModelConstructor} from "./IModel";
 
@@ -69,6 +73,27 @@ export class Model implements IModel {
 		return this.controlledModels[key];
 	}
 
+	protected dispose() {
+		const controlledModels = this.controlledModels || {};
+
+		// tslint:disable-next-line:forin
+		for (const key in controlledModels) {
+			this[key].dispose();
+		}
+
+		for (const key in this) {
+			if (typeof this[key] === "function") {
+				dispose(this[key] as any);
+			}
+		}
+
+		dispose(this);
+
+		if ((this as any).didDispose) {
+			(this as any).didDispose();
+		}
+	}
+
 	/**
 	 * TODO: В ModelAdministrator
 	 * @param key
@@ -88,7 +113,7 @@ export class Model implements IModel {
 				if (prevValue && prevValue instanceof Model) {
 					if (!nextValue) {
 						// Удаляем старое значение
-						disposeModel(prevValue);
+						prevValue.dispose();
 					} else if (prevValue !== nextValue) {
 						if (nextValue instanceof Model) {
 							prevValue.set(nextValue.toPlainObject());
@@ -248,29 +273,4 @@ export function ControlledModel(type: IModelConstructor) {
 		target.controlledModels = target.controlledModels || {};
 		target.controlledModels[propertyKey] = type;
 	};
-}
-
-/**
- * Уничтожает модель, экшны и вложенные модели
- * @param model
- */
-export function disposeModel(model: IModel) {
-	const controlledModels = (model as any).controlledModels || {};
-
-	// tslint:disable-next-line:forin
-	for (const key in controlledModels) {
-		disposeModel(model[key]);
-	}
-
-	for (const key in model) {
-		if (typeof model[key] === "function") {
-			dispose(model[key]);
-		}
-	}
-
-	dispose(model);
-
-	if (model.didDispose) {
-		model.didDispose();
-	}
 }
