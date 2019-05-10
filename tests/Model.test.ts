@@ -1,6 +1,8 @@
-import {Model} from "../src";
-import {AsyncAction} from "../src/Model/Model";
-import {createObserver, dispose} from "../src/Observable/Observable";
+// tslint:disable:max-classes-per-file
+
+import {Model, dispose} from "../src";
+import {AsyncAction, ControlledModel} from "../src/Model/Model";
+import {createObserver} from "../src/Observable/Observable";
 
 describe("Model", () => {
 
@@ -88,13 +90,15 @@ describe("Model", () => {
 
 			@AsyncAction
 			increasing = function*() {
-				this.first++;
-				this.second++;
+				const self = this;
+
+				self.first++;
+				self.second++;
 
 				yield new Promise((resolve) => setTimeout(resolve, 10));
 
-				this.first++;
-				this.second++;
+				self.first++;
+				self.second++;
 			};
 		}
 
@@ -121,6 +125,120 @@ describe("Model", () => {
 
 		dispose(modelObserver);
 		dispose(model);
+	});
+
+	test("ControlledModel", () => {
+		let balances: number;
+
+		interface IBalance {
+			mantissa?: number;
+			value?: number;
+
+			format?(): string;
+		}
+
+		class Balance extends Model implements IBalance {
+			mantissa: number = 0;
+			value: number = 0;
+
+			didCreate() {
+				if (balances === undefined) {
+					balances = 0;
+				}
+
+				balances++;
+			}
+
+			didDispose() {
+				balances--;
+			}
+
+			format(): string {
+				return `${this.value}.${this.mantissa}`;
+			}
+		}
+
+		class Person extends Model {
+			name: string = "";
+
+			@ControlledModel(Balance)
+			balance: IBalance = Model.create<Balance>(Balance);
+		}
+
+		const person = Model.create<Person>(Person);
+
+		expect(person.toPlainObject()).toEqual({
+			balance: {
+				mantissa: 0,
+				value: 0,
+			},
+			name: "",
+		});
+		expect(person.balance.format()).toBe("0.0");
+
+		person.balance = {value: 1, mantissa: 5};
+
+		expect(person.toPlainObject()).toEqual({
+			balance: {
+				mantissa: 5,
+				value: 1,
+			},
+			name: "",
+		});
+		expect(person.balance.format()).toBe("1.5");
+
+		person.balance = {mantissa: 1};
+
+		expect(person.toPlainObject()).toEqual({
+			balance: {
+				mantissa: 1,
+				value: 1,
+			},
+			name: "",
+		});
+		expect(person.balance.format()).toBe("1.1");
+
+		const otherBalance = Model.create<Balance>(Balance, {
+			mantissa: 0,
+			value: 10,
+		});
+		person.balance = otherBalance;
+
+		expect(person.toPlainObject()).toEqual({
+			balance: {
+				mantissa: 0,
+				value: 10,
+			},
+			name: "",
+		});
+		expect(person.balance.format()).toBe("10.0");
+
+		person.balance = undefined;
+
+		expect(person.toPlainObject()).toEqual({
+			name: "",
+		});
+		expect(person.balance).toBe(undefined);
+
+		person.balance = {
+			mantissa: 0,
+			value: 10,
+		};
+
+		expect(person.toPlainObject()).toEqual({
+			balance: {
+				mantissa: 0,
+				value: 10,
+			},
+			name: "",
+		});
+		expect(person.balance.format()).toBe("10.0");
+
+		// Ожидаем, что модели не утекли
+		dispose(person);
+		expect(balances).toBe(1);
+		dispose(otherBalance);
+		expect(balances).toBe(0);
 	});
 
 });

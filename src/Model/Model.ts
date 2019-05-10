@@ -1,5 +1,11 @@
-import {createAction, createAsyncAction, createObservable, createObservableView} from "../Observable/Observable";
-import {ACTION_FLAG_KEY, ASYNC_ACTION_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
+import {
+	createAction,
+	createAsyncAction,
+	createObservable,
+	createObservableView, dispose,
+	getRawAtomValue,
+} from "../Observable/Observable";
+import {ACTION_FLAG_KEY, ASYNC_ACTION_FLAG_KEY, REFERENCE_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
 
 import {IModel, IModelConstructor} from "./IModel";
 
@@ -14,6 +20,8 @@ export class Model implements IModel {
 
 		return model as T;
 	}
+
+	private controlledModels: object;
 
 	public get pk(): string | number {
 		return this.getPk();
@@ -45,6 +53,23 @@ export class Model implements IModel {
 		return JSON.stringify(this.toPlainObject());
 	}
 
+	public clone() {
+		return Model.create(this.constructor as IModelConstructor, this.toPlainObject());
+	}
+
+	@Action
+	public set(attrs: object) {
+		// tslint:disable-next-line:forin
+		for (const name in attrs) {
+			this[name] = attrs[name];
+		}
+	}
+
+	/**
+	 * Инициализация модели и её реактивных атрибутов
+	 * TODO: В ModelAdministrator
+	 * @param attrs
+	 */
 	private initAttrs(attrs: object) {
 		for (const key in attrs) {
 			if (typeof this[key] !== "function") {
@@ -113,6 +138,51 @@ export class Model implements IModel {
 				createObservableView(this, key, method);
 			}
 		}
+
+		// Теперь инициализируем сеттеры для вложенных моделей
+		let descriptor;
+		const controlledModels = this.controlledModels || {};
+
+		// tslint:disable-next-line:forin
+		for (const key in controlledModels) {
+			descriptor = Object.getOwnPropertyDescriptor(this, key);
+
+			Object.defineProperty(this, key, {
+				...descriptor,
+				get: () => {
+					return descriptor.get();
+				},
+				set: (nextValue) => {
+					const prevValue = getRawAtomValue(this, key);
+
+					// Собираем мусор или меняем текущую модель
+					if (prevValue && prevValue instanceof Model) {
+						if (!nextValue) {
+							// Удаляем старое значение
+							disposeModel(prevValue);
+						} else if (prevValue !== nextValue) {
+							if (nextValue instanceof Model) {
+								prevValue.set(nextValue.toPlainObject());
+							} else if (typeof nextValue === "object") {
+								prevValue.set(nextValue);
+							}
+
+							// Инстанс не меняем
+							return;
+						}
+					} else if (!(nextValue instanceof Model)) {
+						nextValue = Model.create(this.controlledModels[key], nextValue);
+					}
+
+					descriptor.set(nextValue);
+				},
+			});
+		}
+
+		// Вызываем метод жизненного цикла
+		if ((this as IModel).didCreate) {
+			(this as IModel).didCreate();
+		}
 	}
 }
 
@@ -156,5 +226,40 @@ export function View(target, propertyKey: string) {
 
 	if (typeof impl === "function") {
 		impl[VIEW_FLAG_KEY] = true;
+	}
+}
+
+/**
+ * Декоратор, отмечающий управляемую ссылку на другую модель
+ */
+export function ControlledModel(type: IModelConstructor) {
+	return function ControlledModelConstructor(target, propertyKey: string) {
+		target.controlledModels = target.controlledModels || {};
+		target.controlledModels[propertyKey] = type;
+	};
+}
+
+/**
+ * Уничтожает модель, экшны и вложенные модели
+ * @param model
+ */
+export function disposeModel(model: IModel) {
+	const controlledModels = (model as any).controlledModels || {};
+
+	// tslint:disable-next-line:forin
+	for (const key in controlledModels) {
+		disposeModel(model[key]);
+	}
+
+	for (const key in model) {
+		if (typeof model[key] === "function") {
+			dispose(model[key]);
+		}
+	}
+
+	dispose(model);
+
+	if (model.didDispose) {
+		model.didDispose();
 	}
 }
