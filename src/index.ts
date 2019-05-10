@@ -12,6 +12,7 @@ export {
 	createObservable,
 	createObserver,
 	createAction,
+	createAsyncAction,
 	createObservableView,
 	dispose,
 } from "./Observable/Observable";

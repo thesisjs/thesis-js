@@ -1,5 +1,5 @@
-import {createAction, createObservable, createObservableView} from "../Observable/Observable";
-import {ACTION_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
+import {createAction, createAsyncAction, createObservable, createObservableView} from "../Observable/Observable";
+import {ACTION_FLAG_KEY, ASYNC_ACTION_FLAG_KEY, VIEW_FLAG_KEY} from "../utils/modelKeys";
 
 import {IModel, IModelConstructor} from "./IModel";
 
@@ -52,17 +52,28 @@ export class Model implements IModel {
 			}
 		}
 
-		// Получаем имена полей
-		const keys = Object.keys(this);
+		// Имена методов
+		const methods = [];
+		// Имена полей
+		const keys = [];
+
+		for (const key in this) {
+			// Только собственные имена
+			if (!this.hasOwnProperty(key)) {
+				continue;
+			}
+
+			keys.push(key);
+		}
+
 		delete (this as any).keys;
 
 		// Превращаем нас в observable
-		createObservable(this);
+		createObservable(this, keys);
 
 		// Сохраняем имена полей
 		(this as any).keys = keys;
 
-		const methodNames = [];
 		let prototype = Object.getPrototypeOf(this);
 		let descriptors;
 		let name;
@@ -79,9 +90,9 @@ export class Model implements IModel {
 			for (name in descriptors) {
 				if (
 					name !== "constructor" &&
-					typeof descriptors[name].value === "function"
+					typeof this[name] === "function"
 				) {
-					methodNames.push(name);
+					methods.push(name);
 				}
 			}
 
@@ -91,11 +102,13 @@ export class Model implements IModel {
 		let method;
 
 		// Превращаем декорированные методы в action или view
-		for (const key of methodNames) {
+		for (const key of methods) {
 			method = (this as any)[key];
 
 			if (method[ACTION_FLAG_KEY]) {
 				(this as any)[key] = createAction(this, method);
+			} else if (method[ASYNC_ACTION_FLAG_KEY]) {
+				(this as any)[key] = createAsyncAction(this, method);
 			} else if (method[VIEW_FLAG_KEY]) {
 				createObservableView(this, key, method);
 			}
@@ -112,6 +125,27 @@ export function Action(target, propertyKey: string) {
 	if (typeof impl === "function") {
 		impl[ACTION_FLAG_KEY] = true;
 	}
+}
+
+/**
+ * Декоратор, превращающий метод-генератор модели в Action
+ */
+export function AsyncAction(target, propertyKey: string) {
+	let impl = target[propertyKey];
+
+	Object.defineProperty(target, propertyKey, {
+		enumerable: true,
+		get() {
+			return impl;
+		},
+		set(value) {
+			if (typeof value === "function") {
+				value[ASYNC_ACTION_FLAG_KEY] = true;
+			}
+
+			impl = value;
+		},
+	});
 }
 
 /**

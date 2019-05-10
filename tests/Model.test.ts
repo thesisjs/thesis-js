@@ -1,4 +1,6 @@
 import {Model} from "../src";
+import {AsyncAction} from "../src/Model/Model";
+import {createObserver, dispose} from "../src/Observable/Observable";
 
 describe("Model", () => {
 
@@ -77,6 +79,48 @@ describe("Model", () => {
 		expect(licensedCar.owner.toFormattedString()).toBe(
 			"Kaibito Young",
 		);
+	});
+
+	test("AsyncAction", async () => {
+		class TwoCounters extends Model {
+			first: number = 0;
+			second: number = 0;
+
+			@AsyncAction
+			increasing = function*() {
+				this.first++;
+				this.second++;
+
+				yield new Promise((resolve) => setTimeout(resolve, 10));
+
+				this.first++;
+				this.second++;
+			};
+		}
+
+		const model = Model.create<TwoCounters>(TwoCounters);
+		const log: object[] = [];
+
+		const modelObserver = createObserver(() => {
+			log.push(model.toPlainObject());
+		});
+
+		modelObserver();
+
+		expect(model.toPlainObject()).toEqual({first: 0, second: 0});
+
+		await model.increasing();
+
+		expect(model.toPlainObject()).toEqual({first: 2, second: 2});
+
+		expect(log).toEqual([
+			{first: 0, second: 0},
+			{first: 1, second: 1},
+			{first: 2, second: 2},
+		]);
+
+		dispose(modelObserver);
+		dispose(model);
 	});
 
 });

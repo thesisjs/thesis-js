@@ -118,26 +118,52 @@ function makeAtom(object, name, defaultValue) {
 	});
 }
 
+function invokeInActionContext(object, func, args) {
+	actionCount++;
+	const result = func.apply(object, args);
+	actionCount--;
+
+	// После последнего экшна запускаем реакции
+	if (!actionCount) {
+		object[administratorKey].callReactionsHook();
+	}
+
+	return result;
+}
+
 export function createAction(object, action) {
-	return function $action(...args: any[]) {
-		actionCount++;
-		const result = action.apply(object, arguments);
-		actionCount--;
+	return function $action() {
+		return invokeInActionContext(object, action, arguments);
+	};
+}
 
-		// После последнего экшна запускаем реакции
-		if (!actionCount) {
-			object[administratorKey].callReactionsHook();
-		}
+export function createAsyncAction(object, generator: GeneratorFunction) {
+	return async function $asyncAction(...args: any[]) {
+		// Получаем итератор
+		const iterator = generator.apply(this, args);
+		let yielded;
 
-		return result;
+		do {
+			// Выполняем так, бужто это экшн
+			yielded = invokeInActionContext(
+				object,
+				() => iterator.next(),
+				[],
+			);
+
+			if (yielded.value instanceof Promise) {
+				await yielded.value;
+			}
+		} while (!yielded.done);
 	};
 }
 
 /**
  * Превращает переданный объект в Observable
  * @param object
+ * @param [keys]
  */
-export function createObservable(object) {
+export function createObservable(object, keys?) {
 	assert(
 		object && typeof object === "object",
 		`Expected an object, bun got '${typeof object}'`,
@@ -157,7 +183,7 @@ export function createObservable(object) {
 	object[viewsKey] = {};
 	object[administratorKey] = makeObservableAdministrator(object, observableStack, observers);
 
-	const keys = Object.keys(object);
+	keys = keys || Object.keys(object);
 	let descriptor;
 
 	// Проходимся по всем ключам объекта
