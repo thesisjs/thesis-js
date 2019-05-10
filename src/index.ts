@@ -8,6 +8,7 @@ import {ADMINISTRATOR_KEY} from "./utils/componentKeys";
 import {installSymbolPolyfill} from "./utils/symbol";
 import {getMountedRootComponent, unmarkRootComponent} from "./Element/Element";
 import {dispose as disposeAnyObservable} from "./Observable/Observable";
+import {ModelList, disposeModelList} from "./ModelList/ModelList";
 
 export {
 	createObservable,
@@ -20,6 +21,7 @@ export {IElement as Element} from "./Element/IElement";
 export {createElement, createComponentElement as createComponent} from "./Element/Element";
 export {Component} from "./Component/Component";
 export {Model, View, Action, AsyncAction, ControlledModel} from "./Model/Model";
+export {ModelList} from "./ModelList/ModelList";
 
 installSymbolPolyfill();
 
@@ -54,7 +56,9 @@ export function findDOMNode(component: IComponent): HTMLElement {
 }
 
 export function dispose(obj: any) {
-	if (obj instanceof Model) {
+	if (obj instanceof ModelList) {
+		disposeModelList(obj);
+	} else if (obj instanceof Model) {
 		disposeModel(obj);
 	} else {
 		disposeAnyObservable(obj);

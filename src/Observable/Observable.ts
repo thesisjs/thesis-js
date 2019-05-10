@@ -77,11 +77,13 @@ function makeView(object, name, view, asMethod) {
 	}
 }
 
-function makeAtom(object, name, defaultValue) {
+export function makeAtom(object, name, defaultValue) {
 	// Значение по умолчанию
 	object[attrsKey][name] = defaultValue;
 
 	Object.defineProperty(object, name, {
+		configurable: true,
+
 		get() {
 			assert(
 				!object[disposedKey],
@@ -116,6 +118,13 @@ function makeAtom(object, name, defaultValue) {
 			administrator.reactHook(name, value, viewComputationStack, actionCount);
 		},
 	});
+}
+
+export function removeAtom(object, name) {
+	// Удаляем сырое значение
+	delete object[attrsKey][name];
+	// Удаляем интерфейсное свойство
+	delete object[name];
 }
 
 function invokeInActionContext(object, func, args) {

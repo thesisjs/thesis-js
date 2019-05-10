@@ -65,6 +65,49 @@ export class Model implements IModel {
 		}
 	}
 
+	protected getControlledConstructor(key) {
+		return this.controlledModels[key];
+	}
+
+	/**
+	 * TODO: В ModelAdministrator
+	 * @param key
+	 */
+	protected initControlledModel(key) {
+		const descriptor = Object.getOwnPropertyDescriptor(this, key);
+
+		Object.defineProperty(this, key, {
+			...descriptor,
+			get: () => {
+				return descriptor.get();
+			},
+			set: (nextValue) => {
+				const prevValue = getRawAtomValue(this, key);
+
+				// Собираем мусор или меняем текущую модель
+				if (prevValue && prevValue instanceof Model) {
+					if (!nextValue) {
+						// Удаляем старое значение
+						disposeModel(prevValue);
+					} else if (prevValue !== nextValue) {
+						if (nextValue instanceof Model) {
+							prevValue.set(nextValue.toPlainObject());
+						} else if (typeof nextValue === "object") {
+							prevValue.set(nextValue);
+						}
+
+						// Инстанс не меняем
+						return;
+					}
+				} else if (!(nextValue instanceof Model)) {
+					nextValue = Model.create(this.getControlledConstructor(key), nextValue);
+				}
+
+				descriptor.set(nextValue);
+			},
+		});
+	}
+
 	/**
 	 * Инициализация модели и её реактивных атрибутов
 	 * TODO: В ModelAdministrator
@@ -140,43 +183,11 @@ export class Model implements IModel {
 		}
 
 		// Теперь инициализируем сеттеры для вложенных моделей
-		let descriptor;
 		const controlledModels = this.controlledModels || {};
 
 		// tslint:disable-next-line:forin
 		for (const key in controlledModels) {
-			descriptor = Object.getOwnPropertyDescriptor(this, key);
-
-			Object.defineProperty(this, key, {
-				...descriptor,
-				get: () => {
-					return descriptor.get();
-				},
-				set: (nextValue) => {
-					const prevValue = getRawAtomValue(this, key);
-
-					// Собираем мусор или меняем текущую модель
-					if (prevValue && prevValue instanceof Model) {
-						if (!nextValue) {
-							// Удаляем старое значение
-							disposeModel(prevValue);
-						} else if (prevValue !== nextValue) {
-							if (nextValue instanceof Model) {
-								prevValue.set(nextValue.toPlainObject());
-							} else if (typeof nextValue === "object") {
-								prevValue.set(nextValue);
-							}
-
-							// Инстанс не меняем
-							return;
-						}
-					} else if (!(nextValue instanceof Model)) {
-						nextValue = Model.create(this.controlledModels[key], nextValue);
-					}
-
-					descriptor.set(nextValue);
-				},
-			});
+			this.initControlledModel(key);
 		}
 
 		// Вызываем метод жизненного цикла
