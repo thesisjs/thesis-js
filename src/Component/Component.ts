@@ -9,7 +9,7 @@ import {IRefs} from "../commons/IRefs";
 import {addVirtualEventListener} from "../utils/citoEvents";
 import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
 import {ComponentAdministrator} from "../ComponentAdministrator/ComponentAdministrator";
-import {popActiveInstance, pushActiveInstance} from "../Element/Element";
+import {getActiveInstance, hasActiveInstance, popActiveInstance, pushActiveInstance} from "../Element/Element";
 
 import {IComponent} from "./IComponent";
 
@@ -39,10 +39,14 @@ export abstract class Component<P extends object> implements IComponent {
 		// Обновление верхнего уровня, то есть мы должны в начале создать
 		// очередь на mount/update, а в конце её выполнить
 		// Вложенные обновления получат нашу очередь
-		const isTopLevelUpdate = !renderContext;
+		const isTopLevelUpdate = !hasActiveInstance();
 
-		if (isTopLevelUpdate) {
-			renderContext = new RenderContext();
+		if (!renderContext) {
+			if (!isTopLevelUpdate) {
+				renderContext = getActiveInstance()[ADMINISTRATOR_KEY].renderContext;
+			} else {
+				renderContext = new RenderContext();
+			}
 		}
 
 		// Сохраняем старую ноду (для случая фрагмента)
@@ -65,17 +69,17 @@ export abstract class Component<P extends object> implements IComponent {
 			"Fragments are not currently supported",
 		);
 
-		if (render && isTopLevelUpdate) {
+		if (render) {
 			// Не забываем записываться в очередь на didUpdate
 			renderContext.scheduleUpdate(this);
 		}
 
-		if (render && prevVirtualNode.dom) {
+		if (render && isTopLevelUpdate && prevVirtualNode.dom) {
 			// Обновляем vdom
 			vdom.update(prevVirtualNode, admin.virtualNode);
 		}
 
-		if (isTopLevelUpdate) {
+		if (render && isTopLevelUpdate) {
 			renderContext.fireAll();
 		}
 	}

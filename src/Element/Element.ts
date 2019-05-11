@@ -28,6 +28,10 @@ export function getActiveInstance(): IComponent {
 	return activeInstances[activeInstances.length - 1];
 }
 
+export function hasActiveInstance(): boolean {
+	return !!activeInstances.length;
+}
+
 // ==== Методы для работы с корневым компонентом ====
 
 export function isRootComponent(component: IComponent): boolean {
