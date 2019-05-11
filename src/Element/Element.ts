@@ -197,6 +197,11 @@ function initComponent(
 	key,
 	ref,
 ): IElement {
+	// Для компонентов без атрибутов
+	if (!attrs || typeof attrs !== "object") {
+		attrs = {};
+	}
+
 	attrs.children = children;
 	attrs.key = key;
 

@@ -570,4 +570,33 @@ describe("Component", () => {
 		Thesis.unmountComponentAtNode(root);
 	});
 
+	test("Component with no attrs", () => {
+		class Child extends Thesis.Component<{}> {
+			render() {
+				return (
+					<div>i am empty and useless child</div>
+				);
+			}
+		}
+
+		class Parent extends Thesis.Component<{}> {
+			render() {
+				return (
+					<div>
+						<Child/>
+					</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		Thesis.createComponent(Parent, root, undefined);
+
+		expect(root.innerHTML).toBe(
+			"<div><div>i am empty and useless child</div></div>",
+		);
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
 });
