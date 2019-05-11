@@ -10,6 +10,7 @@ import {
 	ASYNC_ACTION_FLAG_KEY, ASYNC_ACTION_GETTER_KEY,
 	VIEW_FLAG_KEY,
 } from "../utils/modelKeys";
+import {disposeModelLike} from "../utils/disposeModelLike";
 
 import {IModel, IModelConstructor} from "./IModel";
 
@@ -79,7 +80,7 @@ export class Model implements IModel {
 
 		// tslint:disable-next-line:forin
 		for (const key in controlledModels) {
-			this[key].dispose();
+			disposeModelLike(this[key]);
 		}
 
 		for (const key in this) {
