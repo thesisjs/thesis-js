@@ -7,7 +7,7 @@ import {
 } from "../Observable/Observable";
 import {
 	ACTION_FLAG_KEY,
-	ASYNC_ACTION_FLAG_KEY,
+	ASYNC_ACTION_FLAG_KEY, ASYNC_ACTION_GETTER_KEY,
 	VIEW_FLAG_KEY,
 } from "../utils/modelKeys";
 
@@ -210,7 +210,11 @@ export class Model implements IModel {
 			// На всякий случай возьмём дескриптор, чтобы отловить view
 			descriptor = Object.getOwnPropertyDescriptor(this, key);
 
-			if (descriptor && descriptor.get) {
+			if (
+				descriptor &&
+				descriptor.get &&
+				!descriptor.get[ASYNC_ACTION_GETTER_KEY]
+			) {
 				// Это view
 				method = descriptor.get;
 			} else {
@@ -262,11 +266,16 @@ export function AsyncAction(target, propertyKey: string) {
 
 	let impl = target[propertyKey];
 
+	function getAsyncActionImpl() {
+		return impl;
+	}
+
+	// Чтобы вызвалось в initAttrs
+	getAsyncActionImpl[ASYNC_ACTION_GETTER_KEY] = true;
+
 	Object.defineProperty(target, propertyKey, {
 		enumerable: true,
-		get() {
-			return impl;
-		},
+		get: getAsyncActionImpl,
 		set(value) {
 			if (typeof value === "function") {
 				value[ASYNC_ACTION_FLAG_KEY] = true;
