@@ -150,10 +150,22 @@ export class Model implements IModel {
 		const methods = [].concat(this.methodsToPatch || []);
 		// Имена полей
 		const keys = [];
+		let rawValue;
 
 		for (const key in this) {
 			// Только собственные имена
 			if (!this.hasOwnProperty(key)) {
+				continue;
+			}
+
+			rawValue = this[key];
+
+			// Пропускаем декорированные асинхронные свойства
+			if (
+				rawValue &&
+				typeof rawValue === "function" &&
+				rawValue[ASYNC_ACTION_GETTER_KEY]
+			) {
 				continue;
 			}
 
@@ -260,17 +272,20 @@ export function Action(target, propertyKey: string) {
 /**
  * Декоратор, превращающий метод-генератор модели в Action
  */
-export function AsyncAction(target, propertyKey: string) {
+export function AsyncAction(target, propertyKey: string, descriptor?: {initializer: any}) {
 	target.methodsToPatch = target.methodsToPatch || [];
 	target.methodsToPatch.push(propertyKey);
 
-	let impl = target[propertyKey];
+	// В зависимости от того, декораторы от TS или Babel, у нас будут немного разные аргументы
+	// TODO: Поддержать новый стандарт декораторов
+	let impl = descriptor ? descriptor.initializer : target[propertyKey];
 
 	function getAsyncActionImpl() {
 		return impl;
 	}
 
 	// Чтобы вызвалось в initAttrs
+	impl && (impl[ASYNC_ACTION_GETTER_KEY] = true);
 	getAsyncActionImpl[ASYNC_ACTION_GETTER_KEY] = true;
 
 	Object.defineProperty(target, propertyKey, {
