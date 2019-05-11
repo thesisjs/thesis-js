@@ -259,26 +259,36 @@ function normalizeChildren(children: IElement[], attrs: {[p: string]: any}) {
 	}
 
 	// Нормализация детей
+	const newChildren = [];
+
+	// tslint:disable-next-line:prefer-for-of
 	for (let i = 0; i < children.length; i++) {
 		if (
 			children[i] === null ||
 			children[i] === undefined ||
 			children[i] === false
 		) {
-			// Случай, когда нужно заменить null и undefined на пустую строку
-			children[i] = "" as any;
+			continue;
 		} else if (typeof children[i] === "number") {
 			// Случай, когда нужно превратить строку в число
-			children[i] = String(children[i]) as any;
+			// TODO: Предупреждение, что так делать нельзя в цикле, т.к. у каждый ноды должен быть ключ
+			newChildren.push(String(children[i]) as any);
+
+			continue;
 		} else if (Array.isArray(children[i])) {
 			// Случай, когда нужно развернуть вложенные массивы в плоский
-			children.splice.apply(children, [i, 1].concat(children[i] as any));
-			// Пройдёмся и по свежевставленным детям тоже
-			i--;
+			newChildren.push.apply(
+				newChildren,
+				normalizeChildren(children[i] as any, attrs),
+			);
+
+			continue;
 		}
+
+		newChildren.push(children[i]);
 	}
 
-	return children;
+	return newChildren;
 }
 
 /**
