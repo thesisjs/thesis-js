@@ -154,7 +154,7 @@ export function createAsyncAction(object, generator: GeneratorFunction) {
 		let yieldedResult;
 
 		do {
-			// Выполняем так, бужто это экшн
+			// Выполняем так, будто это экшн
 			yielded = invokeInActionContext(
 				object,
 				() => iterator.next(yieldedResult),

@@ -276,33 +276,42 @@ export function AsyncAction(target, propertyKey: string, descriptor?: PropertyDe
 	target.methodsToPatch = target.methodsToPatch || [];
 	target.methodsToPatch.push(propertyKey);
 
-	// Если декораторы от Babel, то отключаем перечисление свойства
-	// Чтобы случайно не сделать его реактивным
-	if (descriptor) {
-		descriptor.enumerable = false;
-	}
-
 	let impl = target[propertyKey];
 
-	function getAsyncActionImpl() {
-		return impl;
+	if (descriptor) {
+		// Если декораторы от Babel, то отключаем перечисление свойства
+		// Чтобы случайно не сделать его реактивным
+		descriptor.enumerable = false;
+
+		// Пропатчим инициализатор, чтобы в значении свойства тоже отобразилось это
+		impl = (descriptor as any).initializer && (descriptor as any).initializer();
+		impl && (impl[ASYNC_ACTION_GETTER_KEY] = true);
+
+		(descriptor as any).initializer = function $patchedInitializer() {
+			return impl;
+		};
+	} else {
+		// Если декораторы от TypeScript
+
+		const getAsyncActionImpl = function $getAsyncActionImpl() {
+			return impl;
+		};
+
+		// Чтобы вызвалось в initAttrs
+		getAsyncActionImpl[ASYNC_ACTION_GETTER_KEY] = true;
+
+		Object.defineProperty(target, propertyKey, {
+			enumerable: true,
+			get: getAsyncActionImpl,
+			set(value) {
+				if (typeof value === "function") {
+					value[ASYNC_ACTION_FLAG_KEY] = true;
+				}
+
+				impl = value;
+			},
+		});
 	}
-
-	// Чтобы вызвалось в initAttrs
-	impl && (impl[ASYNC_ACTION_GETTER_KEY] = true);
-	getAsyncActionImpl[ASYNC_ACTION_GETTER_KEY] = true;
-
-	Object.defineProperty(target, propertyKey, {
-		enumerable: true,
-		get: getAsyncActionImpl,
-		set(value) {
-			if (typeof value === "function") {
-				value[ASYNC_ACTION_FLAG_KEY] = true;
-			}
-
-			impl = value;
-		},
-	});
 }
 
 /**
