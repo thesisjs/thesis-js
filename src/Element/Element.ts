@@ -62,11 +62,15 @@ export function createComponentElement(
 	target: Node,
 	attrs: any & ISystemAttrs,
 ): InstanceType<IComponentConstructor> {
-	// Создаём компонент
-	const instance = new constructor({
+	// Нормализируем атрибуты, создаём ключ
+	attrs = attrs || {};
+	attrs = {
 		...attrs,
 		key: lastRootKey++,
-	});
+	};
+
+	// Создаём компонент
+	const instance = new constructor(attrs);
 
 	// Создаём контекст отрисовки
 	const renderContext = new RenderContext();
@@ -194,6 +198,7 @@ function initComponent(
 	ref,
 ): IElement {
 	attrs.children = children;
+	attrs.key = key;
 
 	// Инстанс, который сейчас рендерится
 	const activeInstance = getActiveInstance();

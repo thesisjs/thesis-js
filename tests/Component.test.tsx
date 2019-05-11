@@ -3,6 +3,7 @@
 import * as Simulant from "jsdom-simulant";
 
 import * as Thesis from "../src/index";
+import {ADMINISTRATOR_KEY} from "../src/utils/componentKeys";
 
 describe("Component", () => {
 
@@ -510,6 +511,61 @@ describe("Component", () => {
 		Thesis.createComponent(Test, root, {});
 
 		expect(root.innerHTML).toBe("<div></div>");
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
+	test("Deep nesting", () => {
+		interface ITestAttrs {
+			nested: number;
+		}
+
+		class Test extends Thesis.Component<ITestAttrs> {
+			defaults = {
+				nested: 0,
+			};
+
+			render() {
+				const nested = this.attrs.nested - 1;
+
+				return (
+					<div>
+						{this[ADMINISTRATOR_KEY].key}
+						{!!nested && (
+							<Test nested={nested}/>
+						)}
+					</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		const test = Thesis.createComponent(Test, root, {nested: 5});
+
+		expect(root.innerHTML).toMatch(
+			new RegExp(`^<div>\\d
+				<div>\\d:Test_1
+					<div>\\d:Test_1:Test_1
+						<div>\\d:Test_1:Test_1:Test_1
+							<div>\\d:Test_1:Test_1:Test_1:Test_1
+							<\/div>
+						<\/div>
+					<\/div>
+				<\/div>
+			<\/div>$`.replace(/[\n\r\t]/g, "")),
+		);
+
+		test.set({nested: 2});
+
+		expect(root.innerHTML).toMatch(
+			/<div>\d<div>\d:Test_1<\/div><\/div>/,
+		);
+
+		test.set({nested: 3});
+
+		expect(root.innerHTML).toMatch(
+			/<div>\d<div>\d:Test_1<div>\d:Test_1:Test_1<\/div><\/div><\/div>/,
+		);
 
 		Thesis.unmountComponentAtNode(root);
 	});

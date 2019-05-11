@@ -14,10 +14,10 @@ export class ComponentKeyStore implements IComponentKeyStore {
 
 		if (!this.lastKeys[name]) {
 			this.lastKeys[name] = 1;
-			return `${name}:1`;
+			return `${name}_1`;
 		}
 
 		this.lastKeys[name]++;
-		return `${name}:${this.lastKeys[name]}`;
+		return `${name}_${this.lastKeys[name]}`;
 	}
 }
