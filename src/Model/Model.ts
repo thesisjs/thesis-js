@@ -301,7 +301,7 @@ export function AsyncAction(target, propertyKey: string, descriptor?: PropertyDe
 		getAsyncActionImpl[ASYNC_ACTION_GETTER_KEY] = true;
 
 		Object.defineProperty(target, propertyKey, {
-			enumerable: true,
+			enumerable: false,
 			get: getAsyncActionImpl,
 			set(value) {
 				if (typeof value === "function") {
