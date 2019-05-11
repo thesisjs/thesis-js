@@ -28,8 +28,11 @@ installSymbolPolyfill();
 
 export function unmountComponentAtNode(node: Node) {
 	const component = getMountedRootComponent(node.firstChild);
-	unmarkRootComponent(component);
-	vdom.remove(component[ADMINISTRATOR_KEY].virtualNode);
+
+	if (component) {
+		unmarkRootComponent(component);
+		vdom.remove(component[ADMINISTRATOR_KEY].virtualNode);
+	}
 }
 
 export function createModel<T extends IModel>(
