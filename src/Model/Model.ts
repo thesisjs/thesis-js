@@ -285,7 +285,7 @@ export function AsyncAction(target, propertyKey: string, descriptor?: PropertyDe
 
 		// Пропатчим инициализатор, чтобы в значении свойства тоже отобразилось это
 		impl = (descriptor as any).initializer && (descriptor as any).initializer();
-		impl && (impl[ASYNC_ACTION_GETTER_KEY] = true);
+		impl && (impl[ASYNC_ACTION_FLAG_KEY] = true);
 
 		(descriptor as any).initializer = function $patchedInitializer() {
 			return impl;
