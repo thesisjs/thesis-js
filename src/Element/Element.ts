@@ -266,16 +266,24 @@ function normalizeChildren(children: IElement[], attrs: {[p: string]: any}) {
 		if (
 			children[i] === null ||
 			children[i] === undefined ||
-			children[i] === false
+			children[i] === false ||
+			children[i] === ""
 		) {
 			continue;
-		} else if (typeof children[i] === "number") {
+		}
+
+		if (
+			typeof children[i] === "number" ||
+			typeof children[i] === "boolean"
+		) {
 			// Случай, когда нужно превратить строку в число
 			// TODO: Предупреждение, что так делать нельзя в цикле, т.к. у каждый ноды должен быть ключ
 			newChildren.push(String(children[i]) as any);
 
 			continue;
-		} else if (Array.isArray(children[i])) {
+		}
+
+		if (Array.isArray(children[i])) {
 			// Случай, когда нужно развернуть вложенные массивы в плоский
 			newChildren.push.apply(
 				newChildren,
