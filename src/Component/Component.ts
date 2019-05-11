@@ -67,7 +67,7 @@ export abstract class Component<P extends object> implements IComponent {
 			renderContext.scheduleUpdate(this);
 		}
 
-		if (render) {
+		if (render && prevVirtualNode.dom) {
 			// Обновляем vdom
 			vdom.update(prevVirtualNode, admin.virtualNode);
 		}
