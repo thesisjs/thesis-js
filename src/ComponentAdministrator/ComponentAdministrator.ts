@@ -12,7 +12,7 @@ import {
 } from "../Observable/Observable";
 import {IComponent} from "../Component/IComponent";
 import {assert} from "../utils/assert";
-import {addVirtualEventListener} from "../utils/citoEvents";
+import {addVirtualEventListener, removeVirtualEventListener} from "../utils/citoEvents";
 
 import {IComponentAdministrator} from "./IComponentAdministrator";
 
@@ -41,6 +41,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	public remitHandlers = {};
 	public renderContext;
 	public virtualNode;
+	public externalEvents;
 
 	constructor(component: IComponent, attrs: Partial<IAttrs<P> & ISystemAttrs>) {
 		this.component = component;
@@ -52,6 +53,34 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 			case "$destroyed": {
 				this.destroyComponent();
 				break;
+			}
+		}
+	}
+
+	public initExternalEvents(events: object) {
+		// Удаляем старые события
+		if (this.externalEvents) {
+			// tslint:disable-next-line:forin
+			for (const eventName in this.externalEvents) {
+				removeVirtualEventListener(
+					this.virtualNode,
+					eventName,
+					this.externalEvents[eventName],
+				);
+			}
+		}
+
+		this.externalEvents = events;
+
+		// Добавляем новые
+		if (events) {
+			// tslint:disable-next-line:forin
+			for (const eventName in events) {
+				addVirtualEventListener(
+					this.virtualNode,
+					eventName,
+					events[eventName],
+				);
 			}
 		}
 	}

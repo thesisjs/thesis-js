@@ -55,6 +55,9 @@ export abstract class Component<P extends object> implements IComponent {
 				admin.virtualNode.tag === prevVirtualNode.tag,
 				"Component cannot change it's root tag name",
 			);
+
+			// Добавляем предыдущие внешние слушатели событий
+			this[ADMINISTRATOR_KEY].initExternalEvents(this[ADMINISTRATOR_KEY].externalEvents);
 		}
 
 		assert(

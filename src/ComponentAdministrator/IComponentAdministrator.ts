@@ -13,12 +13,14 @@ export interface IComponentAdministrator {
 	keyStore: IComponentKeyStore;
 	renderContext?: IRenderContext;
 	remitHandlers?: IRemitHandlers;
+	externalEvents?: object;
 
 	handleVirtualEvent(virtualEvent: IVirtualEvent);
 
 	initAttrs(attrs: object);
 	initRef(name: string, node: IElement, isComponent: boolean);
 	initAttrChanged(name: string, handler: AttrChangedHandler<any>);
+	initExternalEvents(events: object);
 
 	callMount();
 	callUpdate();

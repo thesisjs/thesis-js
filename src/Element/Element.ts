@@ -239,12 +239,7 @@ function initComponent(
 	}
 
 	// Добавляем обработчики событий компоненту
-	if (events) {
-		// tslint:disable-next-line:forin
-		for (const eventName in events) {
-			addVirtualEventListener(virtualNode, eventName, events[eventName]);
-		}
-	}
+	instance[ADMINISTRATOR_KEY].initExternalEvents(events);
 
 	return virtualNode;
 }

@@ -599,4 +599,58 @@ describe("Component", () => {
 		Thesis.unmountComponentAtNode(root);
 	});
 
+	test("Updating component with listeners", () => {
+		class Child extends Thesis.Component<{text: string, onAction?: any}> {
+			defaults = {
+				text: undefined,
+			};
+
+			render() {
+				return (
+					<button onClick={this.remit("action")}>
+						{this.attrs.text}
+					</button>
+				);
+			}
+		}
+
+		class Parent extends Thesis.Component<{clicked: number}> {
+			defaults = {
+				clicked: 0,
+			};
+
+			render() {
+				return (
+					<div>
+						<Child
+							text={`Clicked ${this.attrs.clicked} times`}
+							onAction={() => this.attrs.clicked++}
+						/>
+					</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		Thesis.createComponent(Parent, root, undefined);
+
+		expect(root.innerHTML).toBe(
+			"<div><button>Clicked 0 times</button></div>",
+		);
+
+		Simulant.fire(root.querySelector("button"), "click");
+
+		expect(root.innerHTML).toBe(
+			"<div><button>Clicked 1 times</button></div>",
+		);
+
+		Simulant.fire(root.querySelector("button"), "click");
+
+		expect(root.innerHTML).toBe(
+			"<div><button>Clicked 2 times</button></div>",
+		);
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
 });
