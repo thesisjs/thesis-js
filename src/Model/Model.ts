@@ -272,13 +272,17 @@ export function Action(target, propertyKey: string) {
 /**
  * Декоратор, превращающий метод-генератор модели в Action
  */
-export function AsyncAction(target, propertyKey: string, descriptor?: {initializer: any}) {
+export function AsyncAction(target, propertyKey: string, descriptor?: PropertyDescriptor) {
 	target.methodsToPatch = target.methodsToPatch || [];
 	target.methodsToPatch.push(propertyKey);
 
-	// В зависимости от того, декораторы от TS или Babel, у нас будут немного разные аргументы
-	// TODO: Поддержать новый стандарт декораторов
-	let impl = descriptor ? descriptor.initializer : target[propertyKey];
+	// Если декораторы от Babel, то отключаем перечисление свойства
+	// Чтобы случайно не сделать его реактивным
+	if (descriptor) {
+		descriptor.enumerable = false;
+	}
+
+	let impl = target[propertyKey];
 
 	function getAsyncActionImpl() {
 		return impl;

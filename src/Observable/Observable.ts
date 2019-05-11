@@ -151,17 +151,18 @@ export function createAsyncAction(object, generator: GeneratorFunction) {
 		// Получаем итератор
 		const iterator = generator.apply(this, args);
 		let yielded;
+		let yieldedResult;
 
 		do {
 			// Выполняем так, бужто это экшн
 			yielded = invokeInActionContext(
 				object,
-				() => iterator.next(),
+				() => iterator.next(yieldedResult),
 				[],
 			);
 
 			if (yielded.value instanceof Promise) {
-				await yielded.value;
+				yieldedResult = await yielded.value;
 			}
 		} while (!yielded.done);
 	};

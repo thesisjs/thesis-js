@@ -95,7 +95,11 @@ describe("Model", () => {
 				self.first++;
 				self.second++;
 
-				yield new Promise((resolve) => setTimeout(resolve, 10));
+				const promiseResult = yield new Promise(
+					(resolve) => setTimeout(() => resolve(42), 10),
+				);
+
+				expect(promiseResult).toBe(42);
 
 				self.first++;
 				self.second++;
