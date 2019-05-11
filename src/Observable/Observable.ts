@@ -140,7 +140,7 @@ function invokeInActionContext(object, func, args) {
 	return result;
 }
 
-export function createAction(object, action) {
+export function createAction(object, action): (...args: any[]) => any {
 	return function $action() {
 		return invokeInActionContext(object, action, arguments);
 	};

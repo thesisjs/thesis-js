@@ -26,7 +26,7 @@ export class Model implements IModel {
 	}
 
 	private controlledModels: object;
-	private viewGetters: Array<((...args: any[]) => any)>;
+	private methodsToPatch: Array<((...args: any[]) => any)>;
 
 	public get pk(): string | number {
 		return this.getPk();
@@ -147,7 +147,7 @@ export class Model implements IModel {
 		}
 
 		// Имена методов
-		const methods = [].concat(this.viewGetters || []);
+		const methods = [].concat(this.methodsToPatch || []);
 		// Имена полей
 		const keys = [];
 
@@ -195,9 +195,18 @@ export class Model implements IModel {
 
 		let method;
 		let descriptor;
+		// Сюда бытем складывать имена пропатченных методов
+		// Чтобы не пропатчить ничего дважды
+		const patchedMethods = {};
 
 		// Превращаем декорированные методы в action или view
 		for (const key of methods) {
+			if (patchedMethods[key]) {
+				continue;
+			}
+
+			patchedMethods[key] = true;
+
 			// На всякий случай возьмём дескриптор, чтобы отловить view
 			descriptor = Object.getOwnPropertyDescriptor(this, key);
 
@@ -248,6 +257,9 @@ export function Action(target, propertyKey: string) {
  * Декоратор, превращающий метод-генератор модели в Action
  */
 export function AsyncAction(target, propertyKey: string) {
+	target.methodsToPatch = target.methodsToPatch || [];
+	target.methodsToPatch.push(propertyKey);
+
 	let impl = target[propertyKey];
 
 	Object.defineProperty(target, propertyKey, {
@@ -269,8 +281,8 @@ export function AsyncAction(target, propertyKey: string) {
  * Декоратор, превращающий метод модели в View
  */
 export function View(target, propertyKey: string) {
-	target.viewGetters = target.viewGetters || [];
-	target.viewGetters.push(propertyKey);
+	target.methodsToPatch = target.methodsToPatch || [];
+	target.methodsToPatch.push(propertyKey);
 }
 
 /**
