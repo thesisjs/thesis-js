@@ -127,7 +127,7 @@ export function removeAtom(object, name) {
 	delete object[name];
 }
 
-function invokeInActionContext(object, func, args) {
+export function invokeInActionContext(object, func, args) {
 	actionCount++;
 	const result = func.apply(object, args);
 	actionCount--;

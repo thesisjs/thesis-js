@@ -158,6 +158,8 @@ export abstract class Component<P extends object> implements IComponent {
 		);
 
 		virtualNode.component = this;
+		virtualNode.key = admin.key;
+
 		admin.virtualNode = virtualNode;
 	}
 

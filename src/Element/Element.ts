@@ -309,6 +309,11 @@ export function createElement(
 		key = attrs.key;
 		ref = attrs.ref;
 
+		// Удаляем key из атрибутов узла, чтобы он ен попал в DOM
+		if (key !== undefined) {
+			delete attrs.key;
+		}
+
 		// Удаляем ref из атрибутов узла, чтобы он не попал в DOM или в другой инстанс
 		if (ref !== undefined) {
 			delete attrs.ref;
@@ -337,12 +342,19 @@ export function createElement(
 		}
 	}
 
-	if (isComponent && !key) {
+	if (isComponent) {
 		// Генерируем компоненту ключ
-		key = activeAdmin.key + ":" + activeAdmin.keyStore.nextKeyFor(
-			tag as IComponentConstructor,
-		);
-	} else if (!isComponent) {
+
+		if (key === undefined) {
+			key = activeAdmin.keyStore.nextKeyFor(
+				tag as IComponentConstructor,
+			);
+		} else {
+			key = "$" + key;
+		}
+
+		key = activeAdmin.key + ":" + key;
+	} else {
 		// Случай, когда рисуем простую ноду (это можно и без ключа)
 		return initVirtualNode(tag as string, attrs, children, events, key, ref);
 	}

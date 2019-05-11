@@ -4,6 +4,7 @@ import * as Simulant from "jsdom-simulant";
 
 import * as Thesis from "../src/index";
 import {ADMINISTRATOR_KEY} from "../src/utils/componentKeys";
+import {invokeInActionContext} from "../src/Observable/Observable";
 
 describe("Component", () => {
 
@@ -648,6 +649,107 @@ describe("Component", () => {
 
 		expect(root.innerHTML).toBe(
 			"<div><button>Clicked 2 times</button></div>",
+		);
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
+	test("Nested updates with various number of children", () => {
+		interface IListElemAttrs {
+			index: number;
+		}
+
+		class ListElem extends Thesis.Component<IListElemAttrs> {
+			defaults = {
+				index: 0,
+			};
+
+			render() {
+				return (
+					<i>{this.attrs.index}</i>
+				);
+			}
+		}
+
+		interface IChildListAttrs {
+			count: number;
+		}
+
+		class ChildList extends Thesis.Component<IChildListAttrs> {
+			defaults = {
+				count: 0,
+			};
+
+			render() {
+				return (
+					<b>{
+						Array
+							.from({length: this.attrs.count})
+							.map((_, index) => (
+								<ListElem key={this.attrs.count - index} index={index}/>
+							))
+					}</b>
+				);
+			}
+		}
+
+		class Child extends Thesis.Component<IChildListAttrs> {
+			defaults = {
+				count: 0,
+			};
+
+			render() {
+				return (
+					<div><ChildList count={this.attrs.count}/></div>
+				);
+			}
+		}
+
+		class Parent extends Thesis.Component<IChildListAttrs> {
+			defaults = {
+				count: 0,
+			};
+
+			render() {
+				return (
+					<span>{this.attrs.count}<Child ref="child"/></span>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		const test = Thesis.createComponent(Parent, root, {count: 0});
+
+		expect(root.innerHTML).toBe(
+			"<span>0<div><b></b></div></span>",
+		);
+
+		// Важен экшн
+		invokeInActionContext(test.attrs, () => {
+			test.set({count: 5});
+			(test.refs as any).child.set({count: 3});
+		}, []);
+
+		expect(root.innerHTML).toBe(
+			"<span>5<div><b><i>0</i><i>1</i><i>2</i></b></div></span>",
+		);
+
+		invokeInActionContext(test.attrs, () => {
+			test.set({count: 6});
+			(test.refs as any).child.set({count: 1});
+		}, []);
+
+		expect(root.innerHTML).toBe(
+			"<span>6<div><b><i>0</i></b></div></span>",
+		);
+
+		invokeInActionContext(test.attrs, () => {
+			test.set({count: 7});
+			(test.refs as any).child.set({count: 2});
+		}, []);
+
+		expect(root.innerHTML).toBe(
+			"<span>7<div><b><i>0</i><i>1</i></b></div></span>",
 		);
 
 		Thesis.unmountComponentAtNode(root);
