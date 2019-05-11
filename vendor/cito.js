@@ -850,6 +850,7 @@
 			domNextChild;
 		while (domLength--) {
 			domNextChild = (domLength > 0) ? domChild.nextSibling : null;
+			// TODO: Разобраться
 			try {
 				domElement.removeChild(domChild);
 			} catch (e) {}
