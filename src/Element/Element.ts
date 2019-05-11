@@ -255,7 +255,11 @@ function normalizeChildren(children: IElement[], attrs: {[p: string]: any}) {
 
 	// Нормализация детей
 	for (let i = 0; i < children.length; i++) {
-		if (children[i] === null || children[i] === undefined) {
+		if (
+			children[i] === null ||
+			children[i] === undefined ||
+			children[i] === false
+		) {
 			// Случай, когда нужно заменить null и undefined на пустую строку
 			children[i] = "" as any;
 		} else if (typeof children[i] === "number") {

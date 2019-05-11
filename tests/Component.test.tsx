@@ -485,4 +485,33 @@ describe("Component", () => {
 		Thesis.unmountComponentAtNode(root);
 	});
 
+	test("JSX Conditions", () => {
+		interface ITestAttrs {
+			visible: boolean;
+		}
+
+		class Test extends Thesis.Component<ITestAttrs> {
+			defaults = {
+				visible: false,
+			};
+
+			render() {
+				return (
+					<div>
+						{this.attrs.visible && (
+							<span>Hello!</span>
+						)}
+					</div>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+		Thesis.createComponent(Test, root, {});
+
+		expect(root.innerHTML).toBe("<div></div>");
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
 });
