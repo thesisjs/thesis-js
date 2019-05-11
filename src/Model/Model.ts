@@ -26,6 +26,7 @@ export class Model implements IModel {
 	}
 
 	private controlledModels: object;
+	private viewGetters: Array<((...args: any[]) => any)>;
 
 	public get pk(): string | number {
 		return this.getPk();
@@ -146,7 +147,7 @@ export class Model implements IModel {
 		}
 
 		// Имена методов
-		const methods = [];
+		const methods = [].concat(this.viewGetters || []);
 		// Имена полей
 		const keys = [];
 
@@ -193,10 +194,20 @@ export class Model implements IModel {
 		}
 
 		let method;
+		let descriptor;
 
 		// Превращаем декорированные методы в action или view
 		for (const key of methods) {
-			method = (this as any)[key];
+			// На всякий случай возьмём дескриптор, чтобы отловить view
+			descriptor = Object.getOwnPropertyDescriptor(this, key);
+
+			if (descriptor && descriptor.get) {
+				// Это view
+				method = descriptor.get;
+			} else {
+				// Это action
+				method = (this as any)[key];
+			}
 
 			if (method[ACTION_FLAG_KEY]) {
 				(this as any)[key] = createAction(this, method);
@@ -258,11 +269,8 @@ export function AsyncAction(target, propertyKey: string) {
  * Декоратор, превращающий метод модели в View
  */
 export function View(target, propertyKey: string) {
-	const impl = target[propertyKey];
-
-	if (typeof impl === "function") {
-		impl[VIEW_FLAG_KEY] = true;
-	}
+	target.viewGetters = target.viewGetters || [];
+	target.viewGetters.push(propertyKey);
 }
 
 /**
