@@ -54,6 +54,11 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 				this.destroyComponent();
 				break;
 			}
+
+			case "$changed": {
+				this.virtualNode = virtualEvent.virtualNode;
+				break;
+			}
 		}
 	}
 

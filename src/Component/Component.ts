@@ -157,6 +157,14 @@ export abstract class Component<P extends object> implements IComponent {
 			admin.handleVirtualEvent,
 		);
 
+		// Подписываемся на стороннее изменение блока
+		// Нужно, чтобы актуализировать собственный virtualNode
+		addVirtualEventListener(
+			virtualNode,
+			"$changed",
+			admin.handleVirtualEvent,
+		);
+
 		virtualNode.component = this;
 		virtualNode.key = admin.key;
 

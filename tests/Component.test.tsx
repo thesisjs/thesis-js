@@ -726,30 +726,30 @@ describe("Component", () => {
 
 		// Важен экшн
 		invokeInActionContext(test.attrs, () => {
-			test.set({count: 5});
+			test.forceUpdate();
 			(test.refs as any).child.set({count: 3});
 		}, []);
 
 		expect(root.innerHTML).toBe(
-			"<span>5<div><b><i>0</i><i>1</i><i>2</i></b></div></span>",
+			"<span>0<div><b><i>0</i><i>1</i><i>2</i></b></div></span>",
 		);
 
 		invokeInActionContext(test.attrs, () => {
-			test.set({count: 6});
+			test.forceUpdate();
 			(test.refs as any).child.set({count: 1});
 		}, []);
 
 		expect(root.innerHTML).toBe(
-			"<span>6<div><b><i>0</i></b></div></span>",
+			"<span>0<div><b><i>0</i></b></div></span>",
 		);
 
 		invokeInActionContext(test.attrs, () => {
-			test.set({count: 7});
+			test.forceUpdate();
 			(test.refs as any).child.set({count: 2});
 		}, []);
 
 		expect(root.innerHTML).toBe(
-			"<span>7<div><b><i>0</i><i>1</i></b></div></span>",
+			"<span>0<div><b><i>0</i><i>1</i></b></div></span>",
 		);
 
 		Thesis.unmountComponentAtNode(root);
