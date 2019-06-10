@@ -145,7 +145,7 @@ export class ModelList extends Model implements ArrayLike<any> {
 		const array = this.slice();
 
 		Array.prototype.splice.apply(
-			this.slice(),
+			array,
 			[start, deleteCount].concat(insertItems),
 		);
 
