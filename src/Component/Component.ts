@@ -44,6 +44,11 @@ export abstract class Component<P extends object> implements IComponent {
 		if (!renderContext) {
 			if (!isTopLevelUpdate) {
 				renderContext = getActiveInstance()[ADMINISTRATOR_KEY].renderContext;
+
+				// TODO: Разобраться
+				if (!renderContext) {
+					renderContext = new RenderContext();
+				}
 			} else {
 				renderContext = new RenderContext();
 			}

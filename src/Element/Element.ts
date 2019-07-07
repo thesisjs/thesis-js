@@ -304,6 +304,21 @@ function normalizeChildren(children: IElement[], attrs: {[p: string]: any}) {
 }
 
 /**
+ * Удаляет пустые (undefined) атрибуты
+ */
+function normalizeAttrs(attrs) {
+	const newAtts = {};
+
+	for (const key in attrs) {
+		if (attrs[key] !== undefined) {
+			newAtts[key] = attrs[key];
+		}
+	}
+
+	return newAtts;
+}
+
+/**
  * Основная точка входа для JSX
  * @param tag
  * @param attrs
@@ -317,6 +332,7 @@ export function createElement(
 	const isComponent = typeof tag !== "string";
 	const hasAttrs = attrs && typeof attrs === "object";
 
+	attrs = hasAttrs && normalizeAttrs(attrs);
 	children = normalizeChildren(children, attrs);
 
 	// Инстанс, который сейчас рендерится
