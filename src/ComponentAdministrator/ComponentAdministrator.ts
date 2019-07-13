@@ -184,7 +184,9 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public callUpdate() {
-		this.callLifecycleMethod("didUpdate");
+		if (this.isMounted()) {
+			this.callLifecycleMethod("didUpdate");
+		}
 	}
 
 	public callUnmount() {
