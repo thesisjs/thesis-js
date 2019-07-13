@@ -121,7 +121,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 			set: (value: any) => {
 				const prevValue = getRawAtomValue(this.component.attrs, name);
 
-				if (prevValue !== value) {
+				if (prevValue !== value && this.isMounted()) {
 					handler.apply(this.component, [value, prevValue]);
 				}
 
@@ -199,6 +199,14 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 
 		// Освобождаем attrs в конце потому, что они могли понадобиться в didUnmount
 		dispose(this.component.attrs);
+	}
+
+	public isMounted(): boolean {
+		return !!(
+			this.virtualNode &&
+			typeof this.virtualNode === "object" &&
+			this.virtualNode.dom
+		);
 	}
 
 	private callLifecycleMethod(name: "didMount" | "didUpdate" | "didUnmount") {

@@ -50,6 +50,8 @@ export function findDOMNode(component: IComponent): HTMLElement {
 	if (
 		component &&
 		typeof component === "object" &&
+		component[ADMINISTRATOR_KEY] &&
+		typeof component[ADMINISTRATOR_KEY] === "object" &&
 		component[ADMINISTRATOR_KEY].virtualNode &&
 		typeof component[ADMINISTRATOR_KEY].virtualNode === "object"
 	) {
@@ -57,6 +59,21 @@ export function findDOMNode(component: IComponent): HTMLElement {
 	}
 
 	return undefined;
+}
+
+/**
+ * Возвращает true, если компонент находится на странице
+ * @param component
+ */
+export function isComponentMounted(component: IComponent): boolean {
+	if (
+		component &&
+		typeof component === "object" &&
+		component[ADMINISTRATOR_KEY] &&
+		typeof component[ADMINISTRATOR_KEY] === "object"
+	) {
+		return component[ADMINISTRATOR_KEY].isMounted();
+	}
 }
 
 export function dispose(obj: any) {

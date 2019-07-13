@@ -27,4 +27,6 @@ export interface IComponentAdministrator {
 	callUnmount();
 
 	destroyComponent();
+
+	isMounted(): boolean;
 }
