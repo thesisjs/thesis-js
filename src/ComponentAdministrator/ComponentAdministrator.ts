@@ -43,6 +43,8 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	public virtualNode;
 	public externalEvents;
 
+	private mounted: boolean = false;
+
 	constructor(component: IComponent, attrs: Partial<IAttrs<P> & ISystemAttrs>) {
 		this.component = component;
 		this.key = attrs.key;
@@ -176,6 +178,8 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public callMount() {
+		this.mounted = true;
+
 		this.callLifecycleMethod("didMount");
 	}
 
@@ -188,6 +192,8 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public destroyComponent() {
+		this.mounted = false;
+
 		// Убираем реактивность с forceUpdate
 		dispose(this.component.forceUpdate);
 
@@ -202,11 +208,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public isMounted(): boolean {
-		return !!(
-			this.virtualNode &&
-			typeof this.virtualNode === "object" &&
-			this.virtualNode.dom
-		);
+		return this.mounted;
 	}
 
 	private callLifecycleMethod(name: "didMount" | "didUpdate" | "didUnmount") {
