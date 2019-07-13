@@ -100,36 +100,44 @@ export function createComponentElement(
 	return instance;
 }
 
+function $eventHandler(handler, component, event) {
+	// Ничего не делаем, если компонент, к которому относится обработчик, уже не в DOM
+	if (component && !component[ADMINISTRATOR_KEY].isMounted()) {
+		return;
+	}
+
+	// TODO: !DEPRECATE!
+	(event as any).stopPropagation();
+
+	const handlerType = typeof handler;
+
+	if (!handler) {
+		return;
+	}
+
+	switch (handlerType) {
+		case "function":
+			return handler(event);
+		case "object": {
+			if (
+				handler.handleEvent &&
+				typeof handler.handleEvent === "string"
+			) {
+				return handler.handleEvent(event);
+			}
+
+			break;
+		}
+	}
+}
+
 /**
  * Функция создаёт обработчик события, который умеет отменять всплытие
  * @param attrs
  * @param name
  */
 function createEventListener(attrs: { [p: string]: any }, name) {
-	return function $eventHandler(handler, event) {
-		(event as any).stopPropagation();
-
-		const handlerType = typeof handler;
-
-		if (!handler) {
-			return;
-		}
-
-		switch (handlerType) {
-			case "function":
-				return handler(event);
-			case "object": {
-				if (
-					handler.handleEvent &&
-					typeof handler.handleEvent === "string"
-				) {
-					return handler.handleEvent(event);
-				}
-
-				break;
-			}
-		}
-	}.bind(null, attrs[name]);
+	return $eventHandler.bind(null, getActiveInstance(), attrs[name]);
 }
 
 /**
