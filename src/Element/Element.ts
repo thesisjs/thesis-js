@@ -100,9 +100,13 @@ export function createComponentElement(
 	return instance;
 }
 
-function $eventHandler(handler, component, event) {
+function $eventHandler(component, handler, event) {
 	// Ничего не делаем, если компонент, к которому относится обработчик, уже не в DOM
-	if (component && !component[ADMINISTRATOR_KEY].isMounted()) {
+	if (
+		component &&
+		component[ADMINISTRATOR_KEY] &&
+		!component[ADMINISTRATOR_KEY].isMounted()
+	) {
 		return;
 	}
 
