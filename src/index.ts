@@ -9,6 +9,7 @@ import {installSymbolPolyfill} from "./utils/symbol";
 import {getMountedRootComponent, unmarkRootComponent} from "./Element/Element";
 import {dispose as disposeAnyObservable} from "./Observable/Observable";
 import {disposeModelLike} from "./utils/disposeModelLike";
+import {IConfig, rootConfig} from "./utils/config";
 
 export {
 	createObservable,
@@ -74,6 +75,14 @@ export function isComponentMounted(component: IComponent): boolean {
 	) {
 		return component[ADMINISTRATOR_KEY].isMounted();
 	}
+}
+
+/**
+ * Настраивает глобальный инстанс библиотеки
+ * @param config
+ */
+export function configure(config: IConfig) {
+	rootConfig.set(config);
 }
 
 export function dispose(obj: any) {

@@ -1,3 +1,4 @@
+import {MODE_DEVELOPMENT, rootConfig} from "./config";
 
 const SUPPORTS_PERFORMANCE = (
 	window.performance &&
@@ -7,7 +8,12 @@ const SUPPORTS_PERFORMANCE = (
 	typeof window.performance.measure === "function"
 );
 
-class DevToolsMark {
+interface IDevToolsMark {
+	duration: number;
+	measure(): number;
+}
+
+class DevToolsMark implements IDevToolsMark {
 	private static lastMarkId = 0;
 
 	private static markName(id: number): string {
@@ -52,9 +58,20 @@ class DevToolsMark {
 	}
 }
 
+const devToolsMarkMock: IDevToolsMark = {
+	duration: 0,
+	measure(): number {
+		return 0;
+	},
+};
+
 export class DevTools {
-	public static mark(name: string): DevToolsMark {
-		return new DevToolsMark(name);
+	public static mark(name: string): IDevToolsMark {
+		if (rootConfig.mode === MODE_DEVELOPMENT) {
+			return new DevToolsMark(name);
+		}
+
+		return devToolsMarkMock;
 	}
 
 	public static getName(any: object): string {
