@@ -9,6 +9,7 @@ import {
 import {assert} from "../utils/assert";
 import {makeObservableAdministrator} from "../ObservableAdministrator/ObservableAdministrator";
 import {isSymbol} from "../utils/symbol";
+import {DevTools} from "../utils/devTools";
 
 const observers = {};
 const observableStack = [];
@@ -128,13 +129,21 @@ export function removeAtom(object, name) {
 }
 
 export function invokeInActionContext(object, func, args) {
+	let mark = DevTools.mark(`🎓 Action ${func.name}`);
+
 	actionCount++;
 	const result = func.apply(object, args);
 	actionCount--;
 
+	mark.measure();
+
 	// После последнего экшна запускаем реакции
 	if (!actionCount) {
+		mark = DevTools.mark(`🎓 Action ${func.name}: reaction`);
+
 		object[administratorKey].callReactionsHook();
+
+		mark.measure();
 	}
 
 	return result;

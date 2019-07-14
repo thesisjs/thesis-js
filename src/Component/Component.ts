@@ -10,6 +10,7 @@ import {addVirtualEventListener} from "../utils/citoEvents";
 import {ADMINISTRATOR_KEY} from "../utils/componentKeys";
 import {ComponentAdministrator} from "../ComponentAdministrator/ComponentAdministrator";
 import {getActiveInstance, hasActiveInstance, popActiveInstance, pushActiveInstance} from "../Element/Element";
+import {DevTools} from "../utils/devTools";
 
 import {IComponent} from "./IComponent";
 
@@ -34,6 +35,8 @@ export abstract class Component<P extends object> implements IComponent {
 		renderContext?: IRenderContext,
 		{render} = {render: true},
 	) {
+		const mark = DevTools.mark(`🎓 ${DevTools.getName(this)}: update`);
+
 		const admin = this[ADMINISTRATOR_KEY];
 
 		// Обновление верхнего уровня, то есть мы должны в начале создать
@@ -87,6 +90,8 @@ export abstract class Component<P extends object> implements IComponent {
 		if (render && isTopLevelUpdate) {
 			renderContext.fireAll();
 		}
+
+		mark.measure();
 	}
 
 	/**
@@ -95,6 +100,8 @@ export abstract class Component<P extends object> implements IComponent {
 	 * @param detail
 	 */
 	public broadcast(type: string, detail?: any) {
+		const mark = DevTools.mark(`🎓 ${DevTools.getName(this)}: broadcast`);
+
 		const admin = this[ADMINISTRATOR_KEY];
 
 		assert(
@@ -108,6 +115,8 @@ export abstract class Component<P extends object> implements IComponent {
 				detail,
 			}),
 		);
+
+		mark.measure();
 	}
 
 	/**
@@ -136,6 +145,8 @@ export abstract class Component<P extends object> implements IComponent {
 	}
 
 	public set(newAttrs: Partial<IAttrs<P>>) {
+		const mark = DevTools.mark(`🎓 ${DevTools.getName(this)}: set`);
+
 		// Это всё заворачивается в action при инициализации, так что реакция
 		// будет только одна (если будет вообще)
 
@@ -143,6 +154,8 @@ export abstract class Component<P extends object> implements IComponent {
 		for (const name in newAttrs) {
 			this.attrs[name] = newAttrs[name];
 		}
+
+		mark.measure();
 	}
 
 	protected createFragment(renderContext: IRenderContext) {
@@ -151,7 +164,11 @@ export abstract class Component<P extends object> implements IComponent {
 		pushActiveInstance(this);
 		admin.renderContext = renderContext;
 
+		const mark = DevTools.mark(`🎓 ${DevTools.getName(this)}: render`);
+
 		const virtualNode = this.render();
+
+		mark.measure();
 
 		admin.renderContext = undefined;
 		// TODO: Проверка на испорченный стек

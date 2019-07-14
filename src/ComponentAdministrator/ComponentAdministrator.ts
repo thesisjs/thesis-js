@@ -13,6 +13,7 @@ import {
 import {IComponent} from "../Component/IComponent";
 import {assert} from "../utils/assert";
 import {addVirtualEventListener, removeVirtualEventListener} from "../utils/citoEvents";
+import {DevTools} from "../utils/devTools";
 
 import {IComponentAdministrator} from "./IComponentAdministrator";
 
@@ -214,12 +215,16 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	private callLifecycleMethod(name: "didMount" | "didUpdate" | "didUnmount") {
+		const mark = DevTools.mark(`🎓 ${DevTools.getName(this.component)}: ${name}`);
+
 		const method = (this.component as IComponent)[name];
 
 		if (typeof method === "function") {
 			// TODO: try-catch
 			method.apply(this.component);
 		}
+
+		mark.measure();
 	}
 
 }
