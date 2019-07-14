@@ -2,13 +2,10 @@ import {
 	ATTRS_KEY as attrsKey,
 	VIEWS_KEY as viewsKey,
 } from "../utils/observableKeys";
-import {DevTools} from "../utils/devTools";
 
 let callQueue = [];
 
 function callReactions(observers) {
-	let mark;
-
 	const observersCalled = {};
 	const localCallQueue = callQueue;
 	callQueue = [];
@@ -19,11 +16,7 @@ function callReactions(observers) {
 			observersCalled[observerId] = true;
 
 			if (observers[observerId]) {
-				mark = DevTools.mark(`🎓 ${observers[observerId].name}: reaction`);
-
 				observers[observerId]();
-
-				mark.measure();
 			}
 		}
 	}
