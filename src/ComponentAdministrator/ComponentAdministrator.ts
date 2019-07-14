@@ -124,11 +124,13 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 			set: (value: any) => {
 				const prevValue = getRawAtomValue(this.component.attrs, name);
 
+				// Сначала выполняем setter
+				observableSetter(value);
+
+				// Потом side effect
 				if (prevValue !== value && this.isMounted()) {
 					handler.apply(this.component, [value, prevValue]);
 				}
-
-				observableSetter(value);
 			},
 		});
 	}
