@@ -5,6 +5,7 @@ import * as Simulant from "jsdom-simulant";
 import * as Thesis from "../src/index";
 import {ADMINISTRATOR_KEY} from "../src/utils/componentKeys";
 import {invokeInActionContext} from "../src/Observable/Observable";
+import {configure} from "../src/index";
 
 describe("Component", () => {
 
@@ -753,6 +754,58 @@ describe("Component", () => {
 		);
 
 		Thesis.unmountComponentAtNode(root);
+	});
+
+	test("Nested components warning", () => {
+		class Child extends Thesis.Component<{}> {
+			defaults = {};
+			render() {
+				return (
+					<span/>
+				);
+			}
+		}
+
+		class Parent extends Thesis.Component<{}> {
+			defaults = {};
+			render() {
+				return (
+					<Child/>
+				);
+			}
+		}
+
+		const root = document.createElement("MAIN");
+
+		// tslint:disable-next-line:no-console
+		const originalWarn = console.warn;
+		const warnLog = [];
+
+		// tslint:disable-next-line:no-console
+		console.warn = (...parts) => {
+			warnLog.push(parts);
+		};
+
+		configure({mode: "production"});
+
+		Thesis.createComponent(Parent, root, {});
+		Thesis.unmountComponentAtNode(root);
+
+		expect(warnLog).toEqual([]);
+
+		configure({mode: "development"});
+
+		Thesis.createComponent(Parent, root, {});
+		Thesis.unmountComponentAtNode(root);
+
+		configure({mode: "production"});
+
+		// tslint:disable-next-line:no-console
+		console.warn = originalWarn;
+
+		expect(warnLog).toEqual([
+			["🎓 Warning at \"Parent\": A component cannot be the root element of another component"],
+		]);
 	});
 
 });

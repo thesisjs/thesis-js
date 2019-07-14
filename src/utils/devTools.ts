@@ -86,4 +86,11 @@ export class DevTools {
 
 		return "(anonymous)";
 	}
+
+	public static warn(component: object, message: string) {
+		if (rootConfig.mode === MODE_DEVELOPMENT) {
+			// tslint:disable-next-line:no-console
+			console.warn(`🎓 Warning at "${DevTools.getName(component)}": ${message}`);
+		}
+	}
 }

@@ -36,7 +36,7 @@ export class Config {
 				}
 			}
 
-			this[`${value}Value`] = value;
+			this[`${key}Value`] = value;
 		});
 	}
 }

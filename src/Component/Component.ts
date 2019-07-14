@@ -170,6 +170,11 @@ export abstract class Component<P extends object> implements IComponent {
 
 		mark.measure();
 
+		// Проверяем, что компонент не является корневым узлом другого компонента
+		if (virtualNode.component) {
+			DevTools.warn(this, "A component cannot be the root element of another component");
+		}
+
 		admin.renderContext = undefined;
 		// TODO: Проверка на испорченный стек
 		popActiveInstance();
