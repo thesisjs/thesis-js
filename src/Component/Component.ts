@@ -47,11 +47,6 @@ export abstract class Component<P extends object> implements IComponent {
 		if (!renderContext) {
 			if (!isTopLevelUpdate) {
 				renderContext = getActiveInstance()[ADMINISTRATOR_KEY].renderContext;
-
-				// TODO: Разобраться
-				if (!renderContext) {
-					renderContext = new RenderContext();
-				}
 			} else {
 				renderContext = new RenderContext();
 			}
@@ -85,6 +80,10 @@ export abstract class Component<P extends object> implements IComponent {
 		if (render && isTopLevelUpdate && prevVirtualNode.dom) {
 			// Обновляем vdom
 			vdom.update(prevVirtualNode, admin.virtualNode);
+		}
+
+		if (isTopLevelUpdate) {
+			renderContext.unregisterInAdministrators();
 		}
 
 		if (render && isTopLevelUpdate) {
@@ -162,7 +161,7 @@ export abstract class Component<P extends object> implements IComponent {
 		const admin = this[ADMINISTRATOR_KEY];
 
 		pushActiveInstance(this);
-		admin.renderContext = renderContext;
+		renderContext.registerInAdministrator(admin);
 
 		const mark = DevTools.mark(`🎓 ${DevTools.getName(this)}: render`);
 
@@ -175,7 +174,6 @@ export abstract class Component<P extends object> implements IComponent {
 			DevTools.warn(this, "A component cannot be the root element of another component");
 		}
 
-		admin.renderContext = undefined;
 		// TODO: Проверка на испорченный стек
 		popActiveInstance();
 
