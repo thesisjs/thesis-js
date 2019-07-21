@@ -182,14 +182,14 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public callMount() {
-		if (!this.destroyed) {
+		if (!this.isDestroyed()) {
 			this.mounted = true;
 			this.callLifecycleMethod("didMount");
 		}
 	}
 
 	public callUpdate() {
-		if (!this.destroyed && this.isMounted()) {
+		if (!this.isDestroyed() && this.isMounted()) {
 			this.callLifecycleMethod("didUpdate");
 		}
 	}
@@ -199,7 +199,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public destroyComponent() {
-		if (this.destroyed) {
+		if (this.isDestroyed()) {
 			return;
 		}
 
@@ -224,6 +224,10 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 
 	public isMounted(): boolean {
 		return this.mounted;
+	}
+
+	public isDestroyed(): boolean {
+		return this.destroyed;
 	}
 
 	private callLifecycleMethod(name: "didMount" | "didUpdate" | "didUnmount") {

@@ -227,6 +227,11 @@ function initComponent(
 
 	let instance = getComponentInstance(key);
 
+	// Даём умереть уничтоженному компоненту
+	if (instance && instance[ADMINISTRATOR_KEY].isDestroyed()) {
+		instance = undefined;
+	}
+
 	if (!instance) {
 		// Компонента не было, создаём
 		instance = new (tag as any)(attrs);
