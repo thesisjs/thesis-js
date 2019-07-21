@@ -179,6 +179,9 @@ export abstract class Component<P extends object> implements IComponent {
 		// TODO: Проверка на испорченный стек
 		popActiveInstance();
 
+		// Удаляем компоненты, которые не были упомянуты в этой итерации
+		admin.keyStore.collectGarbage();
+		// Очищаем хранилище ключей и сбрасываем ссылки (готовим хранилище к следующей итерации)
 		admin.keyStore.clear();
 
 		// Подписываемся на уничтожение блока

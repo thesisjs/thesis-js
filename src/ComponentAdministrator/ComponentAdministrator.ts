@@ -205,6 +205,9 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 		// Удаляем из глобальной коллекции инстансов
 		delete instances[this.key];
 
+		// Удаляем детей
+		this.keyStore.dispose();
+
 		// Вызываем метод жизненного цикла
 		this.callUnmount();
 

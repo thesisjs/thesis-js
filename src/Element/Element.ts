@@ -254,6 +254,9 @@ function initComponent(
 		activeAdmin.initRef(ref, virtualNode, true);
 	}
 
+	// Сохраняем компонент в родителе
+	activeAdmin.keyStore.save(key, instance);
+
 	// Добавляем обработчики событий компоненту
 	instance[ADMINISTRATOR_KEY].initExternalEvents(events);
 

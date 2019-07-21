@@ -808,4 +808,84 @@ describe("Component", () => {
 		]);
 	});
 
+	test("Nested updates with models and destroy", () => {
+		let childUnmounted = false;
+
+		class Person extends Thesis.Model {
+			key: number = 0;
+			firstName: string = "";
+			lastName: string = "";
+		}
+
+		class PersonView extends Thesis.Component<any> {
+			defaults = {
+				clicks: 0,
+				person: undefined,
+			};
+			didUnmount() {
+				childUnmounted = true;
+			}
+			render() {
+				const {person} = this.attrs;
+				return (
+					<div onClick={() => this.attrs.clicks++}>
+						{person.firstName} {person.lastName} ({this.attrs.clicks})
+					</div>
+				);
+			}
+		}
+
+		class Application extends Thesis.Component<any> {
+			defaults = {
+				people: undefined,
+			};
+			render() {
+				const {people: persons} = this.attrs;
+				return (
+					<span>
+						{persons.map((person) => (
+							<PersonView
+								key={person.key}
+								person={person}
+							/>
+						))}
+					</span>
+				);
+			}
+		}
+
+		const people = Thesis.ModelList.create(Person, [{
+			firstName: "Jim",
+			key: 1,
+			lastName: "Hopper",
+		}]);
+
+		const root = document.createElement("MAIN");
+
+		const app = Thesis.createComponent(Application, root, {people});
+
+		expect(root.innerHTML).toBe(
+			"<span><div>Jim Hopper (0)</div></span>",
+		);
+
+		invokeInActionContext(app.attrs, () => {
+			people.set([]);
+
+			people.set([{
+				firstName: "Eleven",
+				key: 2,
+				lastName: "Hopper",
+			}]);
+
+			Simulant.fire(root.querySelector("div"), "click");
+		}, []);
+
+		expect(root.innerHTML).toBe(
+			"<span><div>Eleven Hopper (0)</div></span>",
+		);
+		expect(childUnmounted).toBeTruthy();
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
 });
