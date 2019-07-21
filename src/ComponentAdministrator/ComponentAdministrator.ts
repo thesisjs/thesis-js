@@ -45,6 +45,7 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	public externalEvents;
 
 	private mounted: boolean = false;
+	private destroyed: boolean = false;
 
 	constructor(component: IComponent, attrs: Partial<IAttrs<P> & ISystemAttrs>) {
 		this.component = component;
@@ -197,7 +198,12 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public destroyComponent() {
+		if (this.destroyed) {
+			return;
+		}
+
 		this.mounted = false;
+		this.destroyed = true;
 
 		// Убираем реактивность с forceUpdate
 		dispose(this.component.forceUpdate);
@@ -205,11 +211,11 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 		// Удаляем из глобальной коллекции инстансов
 		delete instances[this.key];
 
-		// Удаляем детей
-		this.keyStore.dispose();
-
 		// Вызываем метод жизненного цикла
 		this.callUnmount();
+
+		// Удаляем детей
+		this.keyStore.dispose();
 
 		// Освобождаем attrs в конце потому, что они могли понадобиться в didUnmount
 		dispose(this.component.attrs);
