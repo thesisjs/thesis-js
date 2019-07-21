@@ -182,13 +182,14 @@ export class ComponentAdministrator<P extends object> implements IComponentAdmin
 	}
 
 	public callMount() {
-		this.mounted = true;
-
-		this.callLifecycleMethod("didMount");
+		if (!this.destroyed) {
+			this.mounted = true;
+			this.callLifecycleMethod("didMount");
+		}
 	}
 
 	public callUpdate() {
-		if (this.isMounted()) {
+		if (!this.destroyed && this.isMounted()) {
 			this.callLifecycleMethod("didUpdate");
 		}
 	}

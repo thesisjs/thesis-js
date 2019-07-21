@@ -888,4 +888,96 @@ describe("Component", () => {
 		Thesis.unmountComponentAtNode(root);
 	});
 
+	test("didMount/didUpdate is not called on unmounted component", () => {
+		const log = [];
+
+		class Person extends Thesis.Model {
+			key: number = 0;
+			firstName: string = "";
+			lastName: string = "";
+		}
+
+		class PersonView extends Thesis.Component<any> {
+			defaults = {
+				person: undefined,
+			};
+			didMount() {
+				log.push(`${this.attrs.person.firstName} didMount ${this[ADMINISTRATOR_KEY].destroyed}`);
+			}
+			didUpdate() {
+				log.push(`${this.attrs.person.firstName} didUpdate ${this[ADMINISTRATOR_KEY].destroyed}`);
+			}
+			didUnmount() {
+				log.push(`${this.attrs.person.firstName} didUnmount ${this[ADMINISTRATOR_KEY].destroyed}`);
+			}
+			render() {
+				const {person} = this.attrs;
+				return (
+					<div>
+						{person.firstName} {person.lastName}
+					</div>
+				);
+			}
+		}
+
+		class Application extends Thesis.Component<any> {
+			defaults = {
+				people: undefined,
+			};
+			render() {
+				const {people: persons} = this.attrs;
+				return (
+					<span>
+						{persons.map((person, index) => (
+							<PersonView
+								key={index}
+								person={person}
+							/>
+						))}
+					</span>
+				);
+			}
+		}
+
+		const people = Thesis.ModelList.create(Person, [
+			{
+				firstName: "Jim",
+				lastName: "Hopper",
+			},
+			{
+				firstName: "Eleven",
+				lastName: "Hopper",
+			},
+		]);
+
+		const root = document.createElement("MAIN");
+
+		const app = Thesis.createComponent(Application, root, {people});
+
+		expect(root.innerHTML).toBe(
+			"<span><div>Jim Hopper</div><div>Eleven Hopper</div></span>",
+		);
+
+		invokeInActionContext(app.attrs, () => {
+			const first = people[0].toPlainObject();
+			const second = people[1].toPlainObject();
+
+			people[0].set(second);
+			people[1].set(first);
+		}, []);
+
+		expect(root.innerHTML).toBe(
+			"<span><div>Eleven Hopper</div><div>Jim Hopper</div></span>",
+		);
+
+		expect(log).toEqual([
+			"Jim didMount false",
+			"Eleven didMount false",
+			"Eleven didUpdate false",
+			"Jim didUpdate false",
+		]);
+
+		Thesis.unmountComponentAtNode(root);
+	});
+
 });
